@@ -14,6 +14,8 @@ town.TownViewModel = function (width, height) {
     this.width = width;
     this.height = height;
 
+    this.activeSelection = ko.observable(null);
+
     // generate tiles
     this.tiles = new Array(this.height);
     var max = 0, min = 0;
@@ -44,6 +46,8 @@ town.TownViewModel = function (width, height) {
             tile.neighborNorth = self.tiles[y - 1][x];
         if (y < self.height - 1)
             tile.neighborSouth = self.tiles[y + 1][x];
+
+        tile.initialize();
     });
 
     // tick method
@@ -68,6 +72,28 @@ town.TownViewModel = function (width, height) {
         });
     }
 
+    this.onClick = function (data, evt) {
+        console.log(evt);
+        
+        var bounding = evt.toElement.getBoundingClientRect();
+        var doc = document.documentElement;
+        var leftScroll = (window.pageXOffset || doc.scrollLeft) - (doc.clientLeft || 0);
+        var topScroll = (window.pageYOffset || doc.scrollTop)  - (doc.clientTop || 0);
+
+        self.activeSelection({
+            element: evt.toElement,
+            name: evt.toElement.getAttribute('data-name'),
+            x: bounding.left + leftScroll,
+            y: bounding.top + topScroll,
+            width: evt.toElement.clientWidth,
+            height: evt.toElement.clientHeight            
+        });
+    };
+
+    this.onDeClick = function (data, evt) {
+        self.activeSelection(null);
+    };
+
     function forEachTile(method) {
         for (var tileY in self.tiles) {
             for (var tileX in self.tiles[tileY]) {
@@ -91,10 +117,10 @@ town.Tile = function (posH, posW, maximumChange, averageSurroundings, availableT
     this.x = posW;
     this.y = posH;
     this.terrain = ko.observable(availableTerrain[Math.round(this.terrainValue)]);
+    this.terrain.variantNumber = ko.observable(Math.floor(Math.random() * this.terrain().variants));
 
     this.terrain.classVariant = ko.computed(function () {
-        this.terrain.variantNumber = Math.floor(Math.random() * this.terrain().variants);
-        return this.terrain().class + ' ' + this.terrain().class + '-' + this.terrain.variantNumber;
+        return this.terrain().class + ' ' + this.terrain().class + '-' + this.terrain.variantNumber();
     }, this);
 
     // subtiles references objects that impinge on each sub-index
@@ -102,16 +128,30 @@ town.Tile = function (posH, posW, maximumChange, averageSurroundings, availableT
     // trees are a specific set of references for display purposes
     this.trees = ko.observableArray([]); //
 
-    var init = function () {
+    this.initialize = function () {
         if (self.terrain().supportsTrees) {
             if (Math.random() * 1 < .1)
                 self.plantTree(self.name, 1, 1, 100);
+        }
+        else if (self.terrain().isWater) {
+            console.log(self.name + " water check");
+            if ((!self.neighborWest || self.neighborWest.terrain().isWater)
+                && (!self.neighborEast || self.neighborEast.terrain().isWater)
+                && (!self.neighborNorth || self.neighborNorth.terrain().isWater)
+                && (!self.neighborSouth || self.neighborSouth.terrain().isWater)) {
+                // add depth
+                console.log(self.name + " water check - depth");
+                self.terrain.variantNumber(1);
+            }
+            else {
+                self.terrain.variantNumber(0);
+            }
         }
     };
 
     this.plantTree = function (sourceName, x, y, size) {
         size = size || 0;
-        console.log(self.name + ' planting new tree at ' + x + ',' + y + ' for ' + sourceName);
+        //console.log(self.name + ' planting new tree at ' + x + ',' + y + ' for ' + sourceName);
 
         // we're assuming anything that got this far knew what it was doing and 
         //  won't mind us failing if it told us to plant something in a neighbor 
@@ -140,7 +180,7 @@ town.Tile = function (posH, posW, maximumChange, averageSurroundings, availableT
             var tree = new town.Tree(self.name, x, y, size);
             self.trees.push(tree);
             self.subtiles[x + y * 3] = tree;
-            console.log(self.name + ' planted new tree ' + tree.name + ' for ' + sourceName);
+            //console.log(self.name + ' planted new tree ' + tree.name + ' for ' + sourceName);
         }
     };
 
@@ -238,8 +278,6 @@ town.Tile = function (posH, posW, maximumChange, averageSurroundings, availableT
             });
         }
     };
-
-    init();
 };
 
 town.Tree = function (parentName, x, y, size) {
@@ -272,7 +310,7 @@ town.Tree = function (parentName, x, y, size) {
 };
 
 town.Terrain = {
-    WATER: { symbol: '~', variants: 1, class: 'terrain-water' },
+    WATER: { symbol: '~', variants: 1, class: 'terrain-water', isWater: true },
     SAND: { symbol: '-', variants: 1, class: 'terrain-sand' },
     DIRT: { symbol: '=', variants: 3, class: 'terrain-dirt' },
     GRASS: { symbol: '/', variants: 4, class: 'terrain-grass', supportsTrees: true },
