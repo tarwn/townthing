@@ -249,6 +249,7 @@ town.Tree = function (parentName, x, y, size) {
     this.name = "[tree " + x + "," + y + " in " + parentName + "]";
     this.size = ko.observable(size);
     this.ticks = Math.random() * town.config.TREESEEDTICKS;
+    this.classVariant = parseInt(Math.random() * 4); //hacky index for image tile selection to create variety
 
     this.onTick = function (onReadyToSeed) {
         this.ticks++;
