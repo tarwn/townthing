@@ -33,7 +33,7 @@ town.TownViewModel = function (width, height) {
         }
     }
     console.log("Tile area is " + this.tiles.length + " by " + this.tiles[0].length);
-    
+
     // assign neighbors on each tile
     forEachTile(function (tile, x, y) {
         if (x > 0)
@@ -144,7 +144,7 @@ town.Tile = function (posH, posW, maximumChange, averageSurroundings, availableT
         }
     };
 
-    this.canSupportTreeIn = function(subtileX, subtileY){
+    this.canSupportTreeIn = function (subtileX, subtileY) {
         //console.log(self.name + ' checking if I can grow tree in ' + subtileX + ',' + subtileY);
 
         // not going to allow diagonal neighbor cross-tile growth right now
@@ -152,17 +152,34 @@ town.Tile = function (posH, posW, maximumChange, averageSurroundings, availableT
             return false;
 
         // check neighbor if outside borders
-        if (subtileX < 0 && self.neighborWest)
-            return self.neighborWest.canSupportTreeIn(2, subtileY);
+        if (subtileX < 0) {
+            if (self.neighborWest)
+                return self.neighborWest.canSupportTreeIn(2, subtileY);
+            else
+                return false;
+        }
 
-        if (subtileX > 2 && self.neighborEast)
-            return self.neighborEast.canSupportTreeIn(0, subtileY);
+        if (subtileX > 2) {
+            if (self.neighborEast)
+                return self.neighborEast.canSupportTreeIn(0, subtileY);
+            else
+                return false;
+        }
 
-        if (subtileY < 0 && self.neighborNorth)
-            return self.neighborNorth.canSupportTreeIn(subtileX, 2);
+        if (subtileY < 0) {
+            if (self.neighborNorth)
+                return self.neighborNorth.canSupportTreeIn(subtileX, 2);
+            else
+                return false;
+        }
 
-        if (subtileY > 2 && self.neighborSouth)
-            return self.neighborSouth.canSupportTreeIn(subtileX, 0);
+
+        if (subtileY > 2) {
+            if (self.neighborSouth)
+                return self.neighborSouth.canSupportTreeIn(subtileX, 0);
+            else
+                return false;
+        }
 
         // otherwise the check is for inside this tile
         if (!self.terrain().supportsTrees)
@@ -170,6 +187,25 @@ town.Tile = function (posH, posW, maximumChange, averageSurroundings, availableT
 
         if (self.subtiles[subtileX + subtileY * 3] != null)
             return false;
+
+        // will it border a terrain type change that we would like to leave tree free?
+        if (subtileX == 0) {
+            if (self.neighborWest && !self.neighborWest.terrain().supportsTrees)
+                return false;
+        }
+        else if (subtileX == 2) {
+            if (self.neighborEast && !self.neighborEast.terrain().supportsTrees)
+                return false;
+        }
+
+        if (subtileY == 0) {
+            if (self.neighborNorth && !self.neighborNorth.terrain().supportsTrees)
+                return false;
+        }
+        else if (subtileY == 2) {
+            if (self.neighborSouth && !self.neighborSouth.terrain().supportsTrees)
+                return false;
+        }
 
         return true;
     };
@@ -223,7 +259,7 @@ town.Tree = function (parentName, x, y, size) {
         else {
             if (self.ticks >= town.config.TREESEEDTICKS) {
                 var spread = onReadyToSeed();
-                
+
                 // growth slows down due to not being able to spread on last try
                 if (!spread)
                     self.ticks = -1 * town.config.TREESEEDTICKS;
@@ -235,12 +271,12 @@ town.Tree = function (parentName, x, y, size) {
 };
 
 town.Terrain = {
-    WATER:  { symbol: '~', variants: 1, class: 'terrain-water' },
-    SAND:   { symbol: '-', variants: 1, class: 'terrain-sand' },
-    DIRT:   { symbol: '=', variants: 3, class: 'terrain-dirt' },
+    WATER: { symbol: '~', variants: 1, class: 'terrain-water' },
+    SAND: { symbol: '-', variants: 1, class: 'terrain-sand' },
+    DIRT: { symbol: '=', variants: 3, class: 'terrain-dirt' },
     GRASS: { symbol: '/', variants: 4, class: 'terrain-grass', supportsTrees: true },
-    ROCK:   { symbol: '+', variants: 1, class: 'terrain-rock' },
-    SWAMP:  { symbol: ';', variants: 1, class: 'terrain-swamp' },
+    ROCK: { symbol: '+', variants: 1, class: 'terrain-rock' },
+    SWAMP: { symbol: ';', variants: 1, class: 'terrain-swamp' },
     FOREST: { symbol: 'P', variants: 1, class: 'terrain-forest' },
     JUNGLE: { symbol: 'Y', variants: 1, class: 'terrain-jungle' },
 };
