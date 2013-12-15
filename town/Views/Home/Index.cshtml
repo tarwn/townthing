@@ -125,6 +125,7 @@
 </style>
 
 <div class="map" data-bind="click: onClick">
+    <!-- ko if: mapReadyForDisplay -->
     <div data-bind="foreach: tiles">
         <div data-bind="foreach: $data">
             <div class="tile" data-bind="attr: { 'data-name': name }">
@@ -136,6 +137,7 @@
             </div>
         </div>
     </div>
+    <!-- /ko -->
 </div>
 <!-- ko if: activeSelection -->
 <div class="active-selection" data-bind="click: onDeClick, style: { top: activeSelection().y, left: activeSelection().x, width: activeSelection().width - 4, height: activeSelection().height - 4 }">
@@ -144,6 +146,8 @@
 <!-- /ko -->
 
 <div>
+    Status: <span data-bind="text: stateDescription"></span><br />
+    map Age: <span data-bind="text: mapAge"></span><br />
     Speed: <span data-bind="text: speed"></span><br />
     Start/Stop: <input type="button" data-bind="click: flipSpeed, value: (speed() == 0 ? 'start' : 'pause')"/><br />
     <div data-bind="with: activeSelection">
@@ -158,6 +162,7 @@
     //var viewmodel = new town.TownViewModel(20,20);
     var viewmodel = new town.TownViewModel(40,20);
     ko.applyBindings(viewmodel);
+    viewmodel.initialize();
 
     function center(x, width, percent) {
         return x + width + (width / 2) * (1 - percent);

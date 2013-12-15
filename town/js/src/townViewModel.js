@@ -3,52 +3,24 @@
 var town = town || {};
 
 town.config = {
+    INITIALTICK: 200,
     TICKTIME: 100,
     TREEGROWINTERVAL: 10,
-    TREEGROWTICKS: 2,
-    TREESEEDTICKS: 10
+    TREEGROWTICKS: 4,
+    TREESEEDTICKS: 15
 };
 
 town.TownViewModel = function (width, height) {
     var self = this;
     this.width = width;
     this.height = height;
+    this.state = ko.observable("uninitialized");
+    this.stateDescription = ko.observable("Uninitialized");
+    this.mapAge = ko.observable(0);
+    this.tiles = null;
+    this.mapReadyForDisplay = ko.observable(false);
 
     this.activeSelection = ko.observable(null);
-
-    // generate tiles
-    this.tiles = new Array(this.height);
-    var max = 0, min = 0;
-    for (var h = 0; h < this.height; h++) {
-        this.tiles[h] = new Array(this.width);
-        for (var w = 0; w < this.width; w++) {
-            var avg = 2;
-            if (w > 0 && h > 0)
-                avg = (this.tiles[h - 1][w].terrainValue + this.tiles[h][w - 1].terrainValue) / 2;
-            else if (w > 0)
-                avg = this.tiles[h][w - 1].terrainValue;
-            else if (h > 0)
-                avg = this.tiles[h - 1][w].terrainValue;
-
-            this.tiles[h][w] = new town.Tile(h, w, .4, avg, [town.Terrain.WATER, town.Terrain.DIRT, town.Terrain.GRASS]);
-            console.log("Added tile " + w + "," + h);
-        }
-    }
-    console.log("Tile area is " + this.tiles.length + " by " + this.tiles[0].length);
-
-    // assign neighbors on each tile
-    forEachTile(function (tile, x, y) {
-        if (x > 0)
-            tile.neighborWest = self.tiles[y][x - 1];
-        if (x < self.width - 1)
-            tile.neighborEast = self.tiles[y][x + 1];
-        if (y > 0)
-            tile.neighborNorth = self.tiles[y - 1][x];
-        if (y < self.height - 1)
-            tile.neighborSouth = self.tiles[y + 1][x];
-
-        tile.initialize();
-    });
 
     // tick method
     this.speed = ko.observable(0);
@@ -67,13 +39,14 @@ town.TownViewModel = function (width, height) {
     };
 
     this.onTick = function () {
+        self.mapAge(self.mapAge() + 1);
         forEachTile(function (tile, x, y) {
             tile.onTick();
         });
     }
 
     this.onClick = function (data, evt) {
-        console.log(evt);
+        //console.log(evt);
         
         var bounding = evt.toElement.getBoundingClientRect();
         var doc = document.documentElement;
@@ -101,6 +74,71 @@ town.TownViewModel = function (width, height) {
             }
         }
     }
+
+    this.setState = function (state, message) {
+        console.log("status change - " + state + " - " + message);
+        self.state(state);
+        self.stateDescription(message);
+    };
+
+    this.initialize = function () {
+        self.setState("initializing", "Initializing map...");
+
+        // generate tiles
+        if (!self.tiles) {
+            self.tiles = new Array(self.height);
+            var max = 0, min = 0;
+            for (var h = 0; h < self.height; h++) {
+                self.tiles[h] = new Array(self.width);
+                for (var w = 0; w < self.width; w++) {
+                    var avg = 2;
+                    if (w > 0 && h > 0)
+                        avg = (self.tiles[h - 1][w].terrainValue + self.tiles[h][w - 1].terrainValue) / 2;
+                    else if (w > 0)
+                        avg = self.tiles[h][w - 1].terrainValue;
+                    else if (h > 0)
+                        avg = self.tiles[h - 1][w].terrainValue;
+
+                    self.tiles[h][w] = new town.Tile(h, w, .4, avg, [town.Terrain.WATER, town.Terrain.DIRT, town.Terrain.GRASS]);
+                    //console.log("Added tile " + w + "," + h);
+                }
+            }
+        }
+
+        self.setState("initializing", "Connecting tiles...");
+
+        // assign neighbors on each tile
+        forEachTile(function (tile, x, y) {
+            if (x > 0)
+                tile.neighborWest = self.tiles[y][x - 1];
+            if (x < self.width - 1)
+                tile.neighborEast = self.tiles[y][x + 1];
+            if (y > 0)
+                tile.neighborNorth = self.tiles[y - 1][x];
+            if (y < self.height - 1)
+                tile.neighborSouth = self.tiles[y + 1][x];
+
+            tile.initialize();
+        });
+
+        self.mapReadyForDisplay(true);
+
+        self.setState("initializing", "Aging the map...");
+        
+        var originalGrowTicks = town.config.TREEGROWTICKS;
+        town.config.TREEGROWTICKS = 1; // increased growth during initialization
+        var initializeInterval = setInterval(function () {
+            if (self.mapAge() < town.config.INITIALTICK) {
+                self.onTick();
+            }
+            else {
+                clearInterval(initializeInterval);
+                self.setState("ready", "Ready to go.");
+                town.config.TREEGROWTICKS = originalGrowTicks;
+            }
+        }, 3);
+
+    };
 }
 
 town.Tile = function (posH, posW, maximumChange, averageSurroundings, availableTerrain) {
@@ -134,13 +172,13 @@ town.Tile = function (posH, posW, maximumChange, averageSurroundings, availableT
                 self.plantTree(self.name, 1, 1, 100);
         }
         else if (self.terrain().isWater) {
-            console.log(self.name + " water check");
+            //console.log(self.name + " water check");
             if ((!self.neighborWest || self.neighborWest.terrain().isWater)
                 && (!self.neighborEast || self.neighborEast.terrain().isWater)
                 && (!self.neighborNorth || self.neighborNorth.terrain().isWater)
                 && (!self.neighborSouth || self.neighborSouth.terrain().isWater)) {
                 // add depth
-                console.log(self.name + " water check - depth");
+                //console.log(self.name + " water check - depth");
                 self.terrain.variantNumber(1);
             }
             else {
