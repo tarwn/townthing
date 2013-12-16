@@ -7,7 +7,7 @@ town.config = {
     TICKTIME: 100,
     TREEGROWINTERVAL: 10,
     TREEGROWTICKS: 4,
-    TREESEEDTICKS: 15,
+    TREESEEDTICKS: 15
 
     /* actual tile width if we assume tree canopies are ~15ft would be 45+ft
         and if we wanted to do buildings we would need this scale, so
