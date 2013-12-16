@@ -145,6 +145,7 @@
     Status: <span data-bind="text: stateDescription"></span><br />
     Map Age: <span data-bind="text: mapAge"></span> ticks<br />
     Wind Dir: <span data-bind="text: globalWindDirection() ? globalWindDirection().name : 'N/A'"></span><br />
+    Change Wind: <input type="button" data-bind="click: generateWindDirection"/><br />
     Run Speed: <span data-bind="text: speed"></span><br />
     Start/Stop: <input type="button" data-bind="click: flipSpeed, value: (speed() == 0 ? 'start' : 'pause')"/><br />
     Show Rainfall? <input type="checkbox" data-bind="checked: showRainfall" />
