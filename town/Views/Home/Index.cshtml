@@ -64,6 +64,7 @@
         /* background-image: url("images/terrain/water_1.png");*/
         background-image: url("images/terrain/water_0.png");
     }
+
     .terrain-dirt {
         z-index: 3;
     }
@@ -76,6 +77,7 @@
     .terrain-dirt-2 {
         background-image: url("images/terrain/dirt_2.png");
     }
+
     .terrain-grass {
         z-index: 4;
     }
@@ -90,6 +92,22 @@
     }
     .terrain-grass-3 {
         background-image: url("images/terrain/grass_3.png");
+    }
+
+    .terrain-drygrass {
+        z-index: 4;
+    }
+    .terrain-drygrass-0 {
+        background-image: url("images/terrain/drygrass_0.png");
+    }
+    .terrain-drygrass-1 {
+        background-image: url("images/terrain/drygrass_1.png");
+    }
+    .terrain-drygrass-2 {
+        background-image: url("images/terrain/drygrass_2.png");
+    }
+    .terrain-drygrass-3 {
+        background-image: url("images/terrain/drygrass_3.png");
     }
 
     /* trees for terrain L1 */
@@ -183,7 +201,7 @@
     //var viewmodel = new town.TownViewModel(20,20);
 
     // -- large map with lake for testin
-    var viewmodel = new town.TownViewModel(20, 20);
+    var viewmodel = new town.TownViewModel(40, 20);
     viewmodel.generateMap();
     viewmodel.tiles[7][8] = new town.Tile(0, 0, 0, 0, [town.Terrain.WATER]);
     viewmodel.tiles[7][9] = new town.Tile(0, 0, 0, 0, [town.Terrain.WATER]);

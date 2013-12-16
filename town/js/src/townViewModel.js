@@ -259,7 +259,7 @@ town.Tile = function (x, y, maximumChange, averageSurroundings, availableTerrain
         //  evaporation rates, humidity, cloud cycles, etc
 
         self.weather.resetRainSources();
-        self.weather.addLocalEvaporationAsRainSource(self.getWaterSourceAmount());
+        self.weather.addLocalEvaporationAsRainSource(self.getEvaporationAmount());
 
         // how much do I receive via wind from neighbors, using a multiplier based on their rainfall and wind direction
         //  made up numbers, will test to see what they end up doing
@@ -342,7 +342,7 @@ town.Tile = function (x, y, maximumChange, averageSurroundings, availableTerrain
         self.weather.calculateAverageRainfall();
     };
 
-    this.getWaterSourceAmount = function () {
+    this.getEvaporationAmount = function () {
         return (self.terrain().evaporation || 0)
             + self.trees().length * town.Tree.evaporation;
     };
@@ -394,6 +394,10 @@ town.Tile = function (x, y, maximumChange, averageSurroundings, availableTerrain
 
     this.canSupportGrass = function () {
         return self.weather.averageRainfall() >= town.Ecology.MinimumWaterForGrass;
+    };
+
+    this.canSupportDryGrass = function () {
+        return self.weather.averageRainfall() >= town.Ecology.MinimumWaterForDryGrass;
     };
 
     this.canSupportAdditionalTrees = function () {
@@ -484,19 +488,34 @@ town.Tile = function (x, y, maximumChange, averageSurroundings, availableTerrain
         self.terrainAge++;
         if (self.terrainAge > 10) {
             // terrain is old enough to transition
+            var neighborHasGrass = function(n){ return n && n.terrain().index == town.Terrain.GRASS.index && n.terrainAge > 10 };
+            var neighborHasDryGrassOrBetter = function (n) { return n && (n.terrain().index == town.Terrain.GRASS.index || n.terrain().index == town.Terrain.DRYGRASS.index) && n.terrainAge > 10 };
 
-            if (self.terrain().canTransitionToGrass && self.canSupportGrass()) {
+            if (self.terrain().canTransitionToGrass && self.canSupportGrass() && self.terrain().index != town.Terrain.GRASS.index) {
 
                 // evaluate neighbors for grass
-                if ((self.neighborNorth && self.neighborNorth.terrain().index == town.Terrain.GRASS.index && self.neighborNorth.terrainAge > 10)
-                    || (self.neighborEast && self.neighborEast.terrain().index == town.Terrain.GRASS.index && self.neighborEast.terrainAge > 10)
-                    || (self.neighborSouth && self.neighborSouth.terrain().index == town.Terrain.GRASS.index && self.neighborSouth.terrainAge > 10)
-                    || (self.neighborWest && self.neighborWest.terrain().index == town.Terrain.GRASS.index && self.neighborWest.terrainAge > 10)
+                if (neighborHasGrass(self.neighborNorth)
+                    || neighborHasGrass(self.neighborEast)
+                    || neighborHasGrass(self.neighborSouth)
+                    || neighborHasGrass(self.neighborWest)
                     || Math.random() * 1 < .05) {
                     self.setTerrain(town.Terrain.GRASS);
                 }
             }
+            else if (self.terrain().canTransitionToGrass && self.canSupportDryGrass() && self.terrain().index != town.Terrain.DRYGRASS.index) {
+                // evaluate neighbors for grass
+                if (neighborHasDryGrassOrBetter(self.neighborNorth)
+                    || neighborHasDryGrassOrBetter(self.neighborEast)
+                    || neighborHasDryGrassOrBetter(self.neighborSouth)
+                    || neighborHasDryGrassOrBetter(self.neighborWest)
+                    || Math.random() * 1 < .05) {
+                    self.setTerrain(town.Terrain.DRYGRASS);
+                }
+            }
             else if (self.terrain().index == town.Terrain.GRASS.index && !self.canSupportGrass()) {
+                self.setTerrain(town.Terrain.DRYGRASS);
+            }
+            else if (self.terrain().index == town.Terrain.DRYGRASS.index && !self.canSupportDryGrass()) {
                 self.setTerrain(town.Terrain.DIRT);
             }
 
@@ -661,18 +680,21 @@ town.Weather = function (parentName) {
 };
 
 town.Terrain = {
-    WATER:  { index: 0, symbol: '~', variants: 1, class: 'terrain-water', isWater: true, evaporation: 5 /* 5 inches/month */ },
-    SAND:   { index: 1, symbol: '-', variants: 1, class: 'terrain-sand' },
-    DIRT:   { index: 2, symbol: '=', variants: 3, class: 'terrain-dirt', canTransitionToGrass: true },
-    GRASS:  { index: 3, symbol: '/', variants: 4, class: 'terrain-grass', supportsTrees: true, evaporation: .5 },
-    ROCK:   { index: 4, symbol: '+', variants: 1, class: 'terrain-rock' },
-    SWAMP:  { index: 5, symbol: ';', variants: 1, class: 'terrain-swamp' },
-    FOREST: { index: 6, symbol: 'P', variants: 1, class: 'terrain-forest' },
-    JUNGLE: { index: 7, symbol: 'Y', variants: 1, class: 'terrain-jungle' },
+    WATER:      { index: 0, symbol: '~', variants: 1, class: 'terrain-water', isWater: true, evaporation: 5 /* 5 inches/month */ },
+    SAND:       { index: 1, symbol: '-', variants: 1, class: 'terrain-sand' },
+    DIRT:       { index: 2, symbol: '=', variants: 3, class: 'terrain-dirt', canTransitionToGrass: true },
+    DRYGRASS:   { index: 4, symbol: '/', variants: 4, class: 'terrain-drygrass', canTransitionToGrass: true },
+    GRASS:      { index: 5, symbol: '/', variants: 4, class: 'terrain-grass', supportsTrees: true, evaporation: .5 },
+    ROCK:       { index: 6, symbol: '+', variants: 1, class: 'terrain-rock' },
+    SWAMP:      { index: 7, symbol: ';', variants: 1, class: 'terrain-swamp' },
+    FOREST:     { index: 8, symbol: 'P', variants: 1, class: 'terrain-forest' },
+    JUNGLE:     { index: 9, symbol: 'Y', variants: 1, class: 'terrain-jungle' },
 };
 
 town.Ecology = {
-    MinimumWaterForGrass: 1,
+    MinimumWaterForDirt: .5,
+    MinimumWaterForDryGrass: .75,
+    MinimumWaterForGrass: 1.25,
     MinimumWaterForTrees: 2,
     MaximumWaterForTrees: 5,
     WaterRequiredPerTree: .375  // first tree at minimum is free, each additional uses slot up to max water
