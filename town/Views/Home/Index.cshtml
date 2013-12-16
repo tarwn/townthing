@@ -31,13 +31,26 @@
     }
     .tile-L1 {
         position: absolute;
-        width: 20px;
-        height: 20px;
+        width: 30px;
+        height: 30px;
         background-repeat: no-repeat;
         left: 0px;
         top: 0px;
         text-align: center;
         line-height: 10px;
+    }
+
+    .tile-rainfall {
+        position:absolute;
+        left: 0px;
+        top: 0px;
+        width: 30px;
+        height: 30px;
+        line-height: 30px;
+        text-align: center;
+        background-color: #99DD99;
+        z-index: 50;
+        opacity: .5;
     }
 
     /* terrain types of tile-bg */
@@ -111,6 +124,11 @@
     .terrain-tree-s90 {  width: 9px; height: 9px;  }
     .terrain-tree-s100{  width: 10px; height: 10px;  }
 
+    /* rainfall levels */
+    .tile-rainfall-0 {
+        display: none;
+    }
+
     .active-selection {
         border: 1px solid yellow;
         position: absolute;
@@ -128,11 +146,13 @@
     <!-- ko if: mapReadyForDisplay -->
     <div data-bind="foreach: tiles">
         <div data-bind="foreach: $data">
-            <div class="tile" data-bind="attr: { 'data-name': name }">
-                <div class="tile-bg" data-bind="css: terrain.classVariant, text: terrain().symbol, attr: { 'data-name': name }">
+            <div class="tile" data-bind="attr: { 'data-name': name, 'data-desc': toString }">
+                <div class="tile-bg" data-bind="css: terrainClassVariant, text: terrain().symbol, attr: { 'data-name': name, 'data-desc': toString }">
                 </div>
-                <div class="tile-L1" data-bind="foreach: trees, attr: { 'data-name': name }">
-                    <div class="terrain-tree" data-bind="css: 'terrain-tree-' + classVariant + ' terrain-tree-s' + size(), style: { left: x * 10 + 5 - 5 * size() / 100, top: y * 10 + 5 - 5 * size() / 100 }, attr: { 'data-name': name }"></div>
+                <div class="tile-L1" data-bind="foreach: trees, attr: { 'data-name': name, 'data-desc': toString }">
+                    <div class="terrain-tree" data-bind="css: 'terrain-tree-' + classVariant + ' terrain-tree-s' + size(), style: { left: x * 10 + 5 - 5 * size() / 100, top: y * 10 + 5 - 5 * size() / 100 }, attr: { 'data-name': name, 'data-desc': toString }"></div>
+                </div>
+                <div class="tile-rainfall" data-bind="visible: $root.showRainfall() && weather.averageRainfall() > 0.05, attr: { 'data-name': name, 'data-desc': toString }, style: { 'background-color': '#0000' + Math.floor(255 - weather.averageRainfall()/10 * 255).toString(16) }">
                 </div>
             </div>
         </div>
@@ -150,8 +170,9 @@
     map Age: <span data-bind="text: mapAge"></span><br />
     Speed: <span data-bind="text: speed"></span><br />
     Start/Stop: <input type="button" data-bind="click: flipSpeed, value: (speed() == 0 ? 'start' : 'pause')"/><br />
+    Show Rainfall? <input type="checkbox" data-bind="checked: showRainfall" />
     <div data-bind="with: activeSelection">
-        Selection: <span data-bind="text: name"></span>
+        Selection: <span data-bind="text: description"></span>
     </div>
 </div>
 
@@ -160,7 +181,27 @@
 <script src="@Url.Content("~/js/src/townViewModel.js")"></script>
 <script type="text/javascript">
     //var viewmodel = new town.TownViewModel(20,20);
-    var viewmodel = new town.TownViewModel(40,20);
+    var viewmodel = new town.TownViewModel(20, 20);
+     //-- forced generation of map for testing
+    //var viewmodel = new town.TownViewModel(11, 1);
+    //viewmodel.tiles = [
+    //    [
+    //        new town.Tile(0, 0, 0, 0, [town.Terrain.WATER]),
+    //        new town.Tile(1, 0, 0, 0, [town.Terrain.WATER]),
+    //        new town.Tile(2, 0, 0, 0, [town.Terrain.WATER]),
+    //        new town.Tile(3, 0, 0, 0, [town.Terrain.GRASS]),
+    //        new town.Tile(4, 0, 0, 0, [town.Terrain.DIRT]),
+    //        new town.Tile(5, 0, 0, 0, [town.Terrain.DIRT]),
+    //        new town.Tile(6, 0, 0, 0, [town.Terrain.DIRT]),
+    //        new town.Tile(7, 0, 0, 0, [town.Terrain.DIRT]),
+    //        new town.Tile(8, 0, 0, 0, [town.Terrain.DIRT]),
+    //        new town.Tile(9, 0, 0, 0, [town.Terrain.DIRT]),
+    //        new town.Tile(10, 0, 0, 0, [town.Terrain.DIRT])
+    //    ]
+    //];
+    //viewmodel.tiles[0][3].plantTree("global", 1, 1, 100);
+    //viewmodel.globalWindDirection(town.compass.EAST);
+    // -- end forced generation
     ko.applyBindings(viewmodel);
     viewmodel.initialize();
 

@@ -19,6 +19,8 @@ town.TownViewModel = function (width, height) {
     this.mapAge = ko.observable(0);
     this.tiles = null;
     this.mapReadyForDisplay = ko.observable(false);
+    this.showRainfall = ko.observable(false);
+    this.globalWindDirection = ko.observable(null);
 
     this.activeSelection = ko.observable(null);
 
@@ -40,6 +42,12 @@ town.TownViewModel = function (width, height) {
 
     this.onTick = function () {
         self.mapAge(self.mapAge() + 1);
+
+        // this can't be good for performance...recalculating whole rain map every 10 ticks
+        if (self.mapAge() % 10) {
+            self.recalculateRainRate();
+        }
+
         forEachTile(function (tile, x, y) {
             tile.onTick();
         });
@@ -56,6 +64,7 @@ town.TownViewModel = function (width, height) {
         self.activeSelection({
             element: evt.toElement,
             name: evt.toElement.getAttribute('data-name'),
+            description: evt.toElement.getAttribute('data-desc'),
             x: bounding.left + leftScroll,
             y: bounding.top + topScroll,
             width: evt.toElement.clientWidth,
@@ -81,11 +90,20 @@ town.TownViewModel = function (width, height) {
         self.stateDescription(message);
     };
 
+    this.recalculateRainRate = function(){
+        for (var i = 0; i < 6; i++) {
+            forEachTile(function (tile, x, y) {
+                tile.initializeRainRate();
+            });
+        }
+    };
+
     this.initialize = function () {
         self.setState("initializing", "Initializing map...");
 
         // generate tiles
         if (!self.tiles) {
+            self.setState("initializing", "Generating tiles...");
             self.tiles = new Array(self.height);
             var max = 0, min = 0;
             for (var h = 0; h < self.height; h++) {
@@ -99,15 +117,14 @@ town.TownViewModel = function (width, height) {
                     else if (h > 0)
                         avg = self.tiles[h - 1][w].terrainValue;
 
-                    self.tiles[h][w] = new town.Tile(h, w, .4, avg, [town.Terrain.WATER, town.Terrain.DIRT, town.Terrain.GRASS]);
+                    self.tiles[h][w] = new town.Tile(w, h, .4, avg, [town.Terrain.WATER, town.Terrain.DIRT, town.Terrain.DIRT /*, town.Terrain.GRASS */]);
                     //console.log("Added tile " + w + "," + h);
                 }
             }
         }
 
-        self.setState("initializing", "Connecting tiles...");
-
         // assign neighbors on each tile
+        self.setState("initializing", "Connecting tiles...");
         forEachTile(function (tile, x, y) {
             if (x > 0)
                 tile.neighborWest = self.tiles[y][x - 1];
@@ -122,6 +139,21 @@ town.TownViewModel = function (width, height) {
         });
 
         self.mapReadyForDisplay(true);
+
+        self.setState("initializing", "Producing weather...");
+        // assign wind direction - currently global
+        if (!self.globalWindDirection()) {
+            var globalWindDir = Math.floor(Math.random() * 8);
+            self.globalWindDirection(town.compass.raw[globalWindDir]);
+        }
+        forEachTile(function (tile, x, y) {
+            tile.weather.windDirection(self.globalWindDirection());
+        });
+        
+        //and now use wind to push rainfall around the map, starting w/ water tiles
+        //  going to build up rain potential in each tile based on amount it generates
+        // let's try brute force
+        self.recalculateRainRate();
 
         self.setState("initializing", "Aging the map...");
         
@@ -141,8 +173,13 @@ town.TownViewModel = function (width, height) {
     };
 }
 
-town.Tile = function (posH, posW, maximumChange, averageSurroundings, availableTerrain) {
+town.Tile = function (x, y, maximumChange, averageSurroundings, availableTerrain) {
     var self = this;
+    this.name = "[tile " + x + "," + y + "]";
+    this.x = x;
+    this.y = y;
+
+    // terrain
     var minTerrainIndex = 0;
     var maxTerrainIndex = availableTerrain.length - 1;
     this.terrainValue = Math.random() * maximumChange * 2 - maximumChange + averageSurroundings;
@@ -151,27 +188,36 @@ town.Tile = function (posH, posW, maximumChange, averageSurroundings, availableT
     if (this.terrainValue > maxTerrainIndex)
         this.terrainValue = maxTerrainIndex;
 
-    this.name = "[tile " + posW + "," + posH + "]";
-    this.x = posW;
-    this.y = posH;
-    this.terrain = ko.observable(availableTerrain[Math.round(this.terrainValue)]);
-    this.terrain.variantNumber = ko.observable(Math.floor(Math.random() * this.terrain().variants));
+    self.terrain = ko.observable();
+    self.terrainVariantNumber = ko.observable();
 
-    this.terrain.classVariant = ko.computed(function () {
-        return this.terrain().class + ' ' + this.terrain().class + '-' + this.terrain.variantNumber();
+    this.setTerrain = function (terrain) {
+        self.terrainAge = 0;
+        self.terrain(terrain);
+        self.terrainVariantNumber(Math.floor(Math.random() * terrain.variants));
+    };
+
+    this.setTerrain(availableTerrain[Math.round(this.terrainValue)]);
+
+    this.terrainClassVariant = ko.computed(function () {
+        return this.terrain().class + ' ' + this.terrain().class + '-' + this.terrainVariantNumber();
     }, this);
 
-    // subtiles references objects that impinge on each sub-index
+    // weather
+    this.weather = new town.Weather(this.name);
+
+    // toString
+    this.toString = ko.computed(function () {
+        return "[tile " + self.x + "," + self.y + " rain=" + this.weather.averageRainfall() + ", windDir=" + this.weather.windDirection().name + "]";
+    }, this);
+
+    // subtiles - references objects that use the space of each subtile
     this.subtiles = new Array(9);
-    // trees are a specific set of references for display purposes
+    // trees are a specific set of references for display purposes - each on takes one subtile
     this.trees = ko.observableArray([]); //
 
     this.initialize = function () {
-        if (self.terrain().supportsTrees) {
-            if (Math.random() * 1 < .1)
-                self.plantTree(self.name, 1, 1, 100);
-        }
-        else if (self.terrain().isWater) {
+        if (self.terrain().isWater) {
             //console.log(self.name + " water check");
             if ((!self.neighborWest || self.neighborWest.terrain().isWater)
                 && (!self.neighborEast || self.neighborEast.terrain().isWater)
@@ -179,12 +225,94 @@ town.Tile = function (posH, posW, maximumChange, averageSurroundings, availableT
                 && (!self.neighborSouth || self.neighborSouth.terrain().isWater)) {
                 // add depth
                 //console.log(self.name + " water check - depth");
-                self.terrain.variantNumber(1);
+                self.terrainVariantNumber(1);
             }
             else {
-                self.terrain.variantNumber(0);
+                self.terrainVariantNumber(0);
             }
         }
+    };
+
+    this.initializeRainRate = function () {
+        // the goal is to get 30-60in/year for forests
+        // and ~60 for water tiles - used lake charles in louisiana for this figure
+        // not going to include seasonal variance yet, that factor can be added later along w/ seasonal seeding/growth
+        // the goal is to create a method that simulates reasonable rainfall amounts without actually modelling
+        //  evaporation rates, humidity, cloud cycles, etc
+
+        self.weather.resetRainSources();
+        self.weather.addLocalEvaporationAsRainSource(self.getWaterSourceAmount());
+
+        // how much do I receive via wind from neighbors, using a multiplier based on their rainfall and wind direction
+        //  made up numbers, will test to see what they end up doing
+        var isDirect = true,
+            directNeighbor = null,
+            indirectNeighbors = [];
+
+        switch (self.weather.windDirection().index) {
+            case town.compass.NORTH.index:
+                directNeighbor = self.neighborSouth;
+                indirectNeighbors = [self.neighborEast, self.neighborWest ]
+                break;
+            case town.compass.NORTHEAST.index:
+                isDirect = false;
+                indirectNeighbors = [self.neighborSouth, self.neighborWest]
+                break;
+            case town.compass.EAST.index:
+                directNeighbor = self.neighborWest;
+                indirectNeighbors = [self.neighborNorth, self.neighborSouth]
+                break;
+            case town.compass.SOUTHEAST.index:
+                isDirect = false;
+                indirectNeighbors = [self.neighborNorth, self.neighborWest]
+                break;
+            case town.compass.SOUTH.index:
+                directNeighbor = self.neighborNorth;
+                indirectNeighbors = [self.neighborEast, self.neighborWest]
+                break;
+            case town.compass.SOUTHWEST.index:
+                isDirect = false;
+                indirectNeighbors = [self.neighborNorth, self.neighborEast]
+                break;
+            case town.compass.WEST.index:
+                directNeighbor = self.neighborEast;
+                indirectNeighbors = [self.neighborNorth, self.neighborSouth]
+                break;
+            case town.compass.NORTHWEST.index:
+                isDirect = false;
+                indirectNeighbors = [self.neighborSouth, self.neighborEast]
+                break;
+            default:
+                // you've invented a new compass direction, no rainfall for you
+                return;
+        }
+
+        if (isDirect) {
+            // all of the rain from direct path of wind - add up the sources unless they're off the map
+            if (directNeighbor) 
+                self.weather.addDirectRainSource(directNeighbor.weather, .8);
+
+            if (indirectNeighbors[0])
+                self.weather.addDirectRainSource(indirectNeighbors[0].weather, .1);
+
+            if (indirectNeighbors[1])
+                self.weather.addDirectRainSource(indirectNeighbors[1].weather, .1);
+        }
+        else {
+            if (indirectNeighbors[0])
+                self.weather.addDirectRainSource(indirectNeighbors[0].weather, .5);
+
+            if (indirectNeighbors[1])
+                self.weather.addDirectRainSource(indirectNeighbors[1].weather, .5);
+        }
+
+        //console.log(self.name + " calculating rainfall - final amount = " + rainfallAmount);
+        self.weather.calculateAverageRainfall();
+    };
+
+    this.getWaterSourceAmount = function () {
+        return (self.terrain().evaporation || 0)
+            + self.trees().length * town.Tree.evaporation;
     };
 
     this.plantTree = function (sourceName, x, y, size) {
@@ -220,6 +348,17 @@ town.Tile = function (posH, posW, maximumChange, averageSurroundings, availableT
             self.subtiles[x + y * 3] = tree;
             //console.log(self.name + ' planted new tree ' + tree.name + ' for ' + sourceName);
         }
+    };
+
+    this.canSupportGrass = function () {
+        return this.weather.averageRainfall() >= town.Ecology.MinimumWaterForGrass;
+    };
+
+    this.canSupportAdditionalTrees = function () {
+        return this.terrain().supportsTrees
+            && this.weather.averageRainfall() >= town.Ecology.MinimumWaterForTrees
+            && this.weather.averageRainfall() <= town.Ecology.MaximumWaterForTrees
+            && this.weather.averageRainfall() >= town.Ecology.WaterRequiredPerTree * (self.trees().length + 1);
     };
 
     this.canSupportTreeIn = function (subtileX, subtileY) {
@@ -260,7 +399,7 @@ town.Tile = function (posH, posW, maximumChange, averageSurroundings, availableT
         }
 
         // otherwise the check is for inside this tile
-        if (!self.terrain().supportsTrees)
+        if (!self.canSupportAdditionalTrees())
             return false;
 
         if (self.subtiles[subtileX + subtileY * 3] != null)
@@ -289,6 +428,33 @@ town.Tile = function (posH, posW, maximumChange, averageSurroundings, availableT
     };
 
     this.onTick = function () {
+
+        self.terrainAge++;
+        if (self.terrainAge > 10) {
+            // terrain is old enough to transition
+
+            if (self.terrain().canTransitionToGrass && self.canSupportGrass()) {
+
+                // evaluate neighbors for grass
+                if ((self.neighborNorth && self.neighborNorth.terrain().index == town.Terrain.GRASS.index && self.neighborNorth.terrainAge > 10)
+                    || (self.neighborEast && self.neighborEast.terrain().index == town.Terrain.GRASS.index && self.neighborEast.terrainAge > 10)
+                    || (self.neighborSouth && self.neighborSouth.terrain().index == town.Terrain.GRASS.index && self.neighborSouth.terrainAge > 10)
+                    || (self.neighborWest && self.neighborWest.terrain().index == town.Terrain.GRASS.index && self.neighborWest.terrainAge > 10)
+                    || Math.random() * 1 < .05) {
+                    self.setTerrain(town.Terrain.GRASS);
+                }
+            }
+            else if (self.terrain().index == town.Terrain.GRASS.index && !self.canSupportGrass()) {
+                self.setTerrain(town.Terrain.DIRT);
+            }
+
+            if (self.terrainAge % 20 == 0 && self.canSupportAdditionalTrees() && self.trees().length == 0) {
+                if (Math.random() * 1 < .1)
+                    self.plantTree(self.name, 1, 1, 100);
+            }
+
+        }
+
         self.onGrowTrees();
     };
 
@@ -327,6 +493,11 @@ town.Tree = function (parentName, x, y, size) {
     this.ticks = Math.random() * town.config.TREESEEDTICKS;
     this.classVariant = parseInt(Math.random() * 4); //hacky index for image tile selection to create variety
 
+    // toString
+    this.toString = ko.computed(function () {
+        return self.name;
+    }, this);
+
     this.onTick = function (onReadyToSeed) {
         this.ticks++;
         if (self.size() < 100 && this.ticks >= town.config.TREEGROWTICKS) {
@@ -346,17 +517,106 @@ town.Tree = function (parentName, x, y, size) {
         }
     };
 };
+town.Tree.evaporation = .5;
+
+town.Weather = function (parentName) {
+    var self = this;
+    this.name = "[weather for " + parentName + "]";
+        
+    this.averageRainfall = ko.observable(0);
+    this.windDirection = ko.observable(town.compass.EAST);
+
+    // track direct rain source amount
+    this.rainSources = new Array(MAX_WIND_RAIN_DISTANCE);
+
+    // if I get around to modeling windspeed/flow then that should
+    //  be used to calculate max distance and have AVG_RAIN_DISTANCE replaced
+    //  with average distance traveled between rainstorms
+    var AVG_RAIN_DISTANCE = 5;
+    var MAX_WIND_RAIN_DISTANCE = 8;
+    var PROBABILITY_OF_RAIN = [ .05, .05, .1, .1, .2, .3, .1, .05, .05 ]
+
+    this.resetRainSources = function () {
+        this.rainSources = new Array(MAX_WIND_RAIN_DISTANCE);
+    };
+
+    this.addLocalEvaporationAsRainSource = function (evaporation) {
+        // evaporation is per month, rain frequency is per distance
+        //  let's assume it's also per month for now
+        if (this.rainSources[0])
+            self.rainSources[0] += evaporation * AVG_RAIN_DISTANCE; // amount of rain available for a given rainy day
+        else
+            self.rainSources[0] = evaporation * AVG_RAIN_DISTANCE;
+    };
+
+    this.addDirectRainSource = function (weather, percentImpact) {
+        // rainfall travels up to a certain distance before falling
+        //  we'll calculate as if most of it travels directly with wind and
+        //  a small part disperses to sides, thus the percentImpact
+
+        for (var sourceDistanceIndex = 0; sourceDistanceIndex < weather.rainSources.length; sourceDistanceIndex++) {
+            if (sourceDistanceIndex < MAX_WIND_RAIN_DISTANCE && weather.rainSources[sourceDistanceIndex]) {
+                if (self.rainSources[sourceDistanceIndex + 1]) {
+                    self.rainSources[sourceDistanceIndex + 1] += weather.rainSources[sourceDistanceIndex] * percentImpact;
+                }
+                else {
+                    self.rainSources[sourceDistanceIndex + 1] = weather.rainSources[sourceDistanceIndex] * percentImpact;
+                }
+            }
+        }
+    };
+
+    this.calculateAverageRainfall = function () {
+
+        // on average, precipitation travels RAIN_FREQUENCY tiles before falling, so let's average sources
+        var total = 0;
+        var max = 0;
+        for (var distanceIndex in self.rainSources) {
+            total += self.rainSources[distanceIndex] * PROBABILITY_OF_RAIN[distanceIndex];
+            if (max < self.rainSources[distanceIndex])
+                max = self.rainSources[distanceIndex];
+        }
+
+        if (total > max)
+            total = max;
+
+        // round to something readable/useful
+        total = Math.round(total * 20) / 20;
+
+        self.averageRainfall(total);
+    };
+};
 
 town.Terrain = {
-    WATER: { symbol: '~', variants: 1, class: 'terrain-water', isWater: true },
-    SAND: { symbol: '-', variants: 1, class: 'terrain-sand' },
-    DIRT: { symbol: '=', variants: 3, class: 'terrain-dirt' },
-    GRASS: { symbol: '/', variants: 4, class: 'terrain-grass', supportsTrees: true },
-    ROCK: { symbol: '+', variants: 1, class: 'terrain-rock' },
-    SWAMP: { symbol: ';', variants: 1, class: 'terrain-swamp' },
-    FOREST: { symbol: 'P', variants: 1, class: 'terrain-forest' },
-    JUNGLE: { symbol: 'Y', variants: 1, class: 'terrain-jungle' },
+    WATER:  { index: 0, symbol: '~', variants: 1, class: 'terrain-water', isWater: true, evaporation: 5 /* 5 inches/month */ },
+    SAND:   { index: 1, symbol: '-', variants: 1, class: 'terrain-sand' },
+    DIRT:   { index: 2, symbol: '=', variants: 3, class: 'terrain-dirt', canTransitionToGrass: true },
+    GRASS:  { index: 3, symbol: '/', variants: 4, class: 'terrain-grass', supportsTrees: true, evaporation: .5 },
+    ROCK:   { index: 4, symbol: '+', variants: 1, class: 'terrain-rock' },
+    SWAMP:  { index: 5, symbol: ';', variants: 1, class: 'terrain-swamp' },
+    FOREST: { index: 6, symbol: 'P', variants: 1, class: 'terrain-forest' },
+    JUNGLE: { index: 7, symbol: 'Y', variants: 1, class: 'terrain-jungle' },
 };
+
+town.Ecology = {
+    MinimumWaterForGrass: 1,
+    MinimumWaterForTrees: 2,
+    MaximumWaterForTrees: 5,
+    WaterRequiredPerTree: .5
+}
+
+town.compass = {
+    NORTH:      { index: 0, name: "North" },
+    NORTHEAST:  { index: 1, name: "Northeast" },
+    EAST:       { index: 2, name: "East" },
+    SOUTHEAST:  { index: 3, name: "Southeast" },
+    SOUTH:      { index: 4, name: "South" },
+    SOUTHWEST:  { index: 5, name: "Southwest" },
+    WEST:       { index: 6, name: "West" },
+    NORTHWEST:  { index: 7, name: "Northwest" },
+};
+town.compass.raw = [ town.compass.NORTH, town.compass.NORTHEAST, town.compass.EAST, town.compass.SOUTHEAST,
+                    town.compass.SOUTH, town.compass.SOUTHWEST, town.compass.WEST, town.compass.NORTHWEST ];
 
 town.utility = town.utility || [];
 
