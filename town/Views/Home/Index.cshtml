@@ -141,7 +141,17 @@
         height: 100%;
     }
 </style>
-
+<div style="width: 200px; float: left;">
+    Status: <span data-bind="text: stateDescription"></span><br />
+    Map Age: <span data-bind="text: mapAge"></span> ticks<br />
+    Wind Dir: <span data-bind="text: globalWindDirection() ? globalWindDirection().name : 'N/A'"></span><br />
+    Run Speed: <span data-bind="text: speed"></span><br />
+    Start/Stop: <input type="button" data-bind="click: flipSpeed, value: (speed() == 0 ? 'start' : 'pause')"/><br />
+    Show Rainfall? <input type="checkbox" data-bind="checked: showRainfall" />
+    <div data-bind="with: activeSelection">
+        Selection: <span data-bind="text: description"></span>
+    </div>
+</div>
 <div class="map" data-bind="click: onClick">
     <!-- ko if: mapReadyForDisplay -->
     <div data-bind="foreach: tiles">
@@ -152,7 +162,7 @@
                 <div class="tile-L1" data-bind="foreach: trees, attr: { 'data-name': name, 'data-desc': toString }">
                     <div class="terrain-tree" data-bind="css: 'terrain-tree-' + classVariant + ' terrain-tree-s' + size(), style: { left: x * 10 + 5 - 5 * size() / 100, top: y * 10 + 5 - 5 * size() / 100 }, attr: { 'data-name': name, 'data-desc': toString }"></div>
                 </div>
-                <div class="tile-rainfall" data-bind="visible: $root.showRainfall() && weather.averageRainfall() > 0.05, attr: { 'data-name': name, 'data-desc': toString }, style: { 'background-color': '#0000' + Math.floor(255 - weather.averageRainfall()/10 * 255).toString(16) }">
+                <div class="tile-rainfall" data-bind="visible: $root.showRainfall() && weather.averageRainfall() > 0.05, attr: { 'data-name': name, 'data-desc': toString }, style: { 'background-color': '#0000' + Math.floor(255 - (weather.averageRainfall()/10) * 255).toString(16) }">
                 </div>
             </div>
         </div>
@@ -165,24 +175,27 @@
 </div>
 <!-- /ko -->
 
-<div>
-    Status: <span data-bind="text: stateDescription"></span><br />
-    map Age: <span data-bind="text: mapAge"></span><br />
-    Speed: <span data-bind="text: speed"></span><br />
-    Start/Stop: <input type="button" data-bind="click: flipSpeed, value: (speed() == 0 ? 'start' : 'pause')"/><br />
-    Show Rainfall? <input type="checkbox" data-bind="checked: showRainfall" />
-    <div data-bind="with: activeSelection">
-        Selection: <span data-bind="text: description"></span>
-    </div>
-</div>
-
 <script src="@Url.Content("~/js/lib/jquery-1.10.2.min.js")"></script>
 <script src="@Url.Content("~/js/lib/knockout-2.3.0.js")"></script>
 <script src="@Url.Content("~/js/src/townViewModel.js")"></script>
 <script type="text/javascript">
     //var viewmodel = new town.TownViewModel(20,20);
+
+    // -- large map with lake for testin
     var viewmodel = new town.TownViewModel(20, 20);
-     //-- forced generation of map for testing
+    viewmodel.generateMap();
+    viewmodel.tiles[7][8] = new town.Tile(0, 0, 0, 0, [town.Terrain.WATER]);
+    viewmodel.tiles[7][9] = new town.Tile(0, 0, 0, 0, [town.Terrain.WATER]);
+    viewmodel.tiles[8][7] = new town.Tile(0, 0, 0, 0, [town.Terrain.WATER]);
+    viewmodel.tiles[8][8] = new town.Tile(0, 0, 0, 0, [town.Terrain.WATER]);
+    viewmodel.tiles[8][9] = new town.Tile(0, 0, 0, 0, [town.Terrain.WATER]);
+    viewmodel.tiles[8][10] = new town.Tile(0, 0, 0, 0, [town.Terrain.WATER]);
+    viewmodel.tiles[9][8] = new town.Tile(0, 0, 0, 0, [town.Terrain.WATER]);
+    viewmodel.tiles[9][9] = new town.Tile(0, 0, 0, 0, [town.Terrain.WATER]);
+    viewmodel.globalWindDirection(town.compass.EAST);
+    // -- end large map
+
+    //-- Small map for testing
     //var viewmodel = new town.TownViewModel(11, 1);
     //viewmodel.tiles = [
     //    [
@@ -201,7 +214,8 @@
     //];
     //viewmodel.tiles[0][3].plantTree("global", 1, 1, 100);
     //viewmodel.globalWindDirection(town.compass.EAST);
-    // -- end forced generation
+    // -- end small map
+
     ko.applyBindings(viewmodel);
     viewmodel.initialize();
 

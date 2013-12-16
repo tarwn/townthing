@@ -7,7 +7,16 @@ town.config = {
     TICKTIME: 100,
     TREEGROWINTERVAL: 10,
     TREEGROWTICKS: 4,
-    TREESEEDTICKS: 15
+    TREESEEDTICKS: 15,
+
+    /* actual tile width if we assume tree canopies are ~15ft would be 45+ft
+        and if we wanted to do buildings we would need this scale, so
+        maybe we need a world view and a zoomed in view? 
+
+        options: 
+        -   make trees representative and tiles much larger, like 1 mile       
+        -   make trees accurate-ish and tiles ~50ft (quarter acre)
+    */
 };
 
 town.TownViewModel = function (width, height) {
@@ -98,29 +107,33 @@ town.TownViewModel = function (width, height) {
         }
     };
 
+    this.generateMap = function () {
+        self.tiles = new Array(self.height);
+        var max = 0, min = 0;
+        for (var h = 0; h < self.height; h++) {
+            self.tiles[h] = new Array(self.width);
+            for (var w = 0; w < self.width; w++) {
+                var avg = 2;
+                if (w > 0 && h > 0)
+                    avg = (self.tiles[h - 1][w].terrainValue + self.tiles[h][w - 1].terrainValue) / 2;
+                else if (w > 0)
+                    avg = self.tiles[h][w - 1].terrainValue;
+                else if (h > 0)
+                    avg = self.tiles[h - 1][w].terrainValue;
+
+                self.tiles[h][w] = new town.Tile(w, h, .4, avg, [town.Terrain.WATER, town.Terrain.DIRT, town.Terrain.DIRT /*, town.Terrain.GRASS */]);
+                //console.log("Added tile " + w + "," + h);
+            }
+        }
+    };
+
     this.initialize = function () {
         self.setState("initializing", "Initializing map...");
 
         // generate tiles
         if (!self.tiles) {
             self.setState("initializing", "Generating tiles...");
-            self.tiles = new Array(self.height);
-            var max = 0, min = 0;
-            for (var h = 0; h < self.height; h++) {
-                self.tiles[h] = new Array(self.width);
-                for (var w = 0; w < self.width; w++) {
-                    var avg = 2;
-                    if (w > 0 && h > 0)
-                        avg = (self.tiles[h - 1][w].terrainValue + self.tiles[h][w - 1].terrainValue) / 2;
-                    else if (w > 0)
-                        avg = self.tiles[h][w - 1].terrainValue;
-                    else if (h > 0)
-                        avg = self.tiles[h - 1][w].terrainValue;
-
-                    self.tiles[h][w] = new town.Tile(w, h, .4, avg, [town.Terrain.WATER, town.Terrain.DIRT, town.Terrain.DIRT /*, town.Terrain.GRASS */]);
-                    //console.log("Added tile " + w + "," + h);
-                }
-            }
+            self.generateMap();
         }
 
         // assign neighbors on each tile
@@ -247,40 +260,49 @@ town.Tile = function (x, y, maximumChange, averageSurroundings, availableTerrain
         //  made up numbers, will test to see what they end up doing
         var isDirect = true,
             directNeighbor = null,
-            indirectNeighbors = [];
+            indirectNeighbors = [],
+                againstTheWind = [];
 
         switch (self.weather.windDirection().index) {
             case town.compass.NORTH.index:
                 directNeighbor = self.neighborSouth;
-                indirectNeighbors = [self.neighborEast, self.neighborWest ]
+                indirectNeighbors = [self.neighborEast, self.neighborWest];
+                againstTheWind = [self.neighborNorth];
                 break;
             case town.compass.NORTHEAST.index:
                 isDirect = false;
-                indirectNeighbors = [self.neighborSouth, self.neighborWest]
+                indirectNeighbors = [self.neighborSouth, self.neighborWest];
+                againstTheWind = [self.neighborNorth, self.neighborEast];
                 break;
             case town.compass.EAST.index:
                 directNeighbor = self.neighborWest;
-                indirectNeighbors = [self.neighborNorth, self.neighborSouth]
+                indirectNeighbors = [self.neighborNorth, self.neighborSouth];
+                againstTheWind = [self.neighborEast];
                 break;
             case town.compass.SOUTHEAST.index:
                 isDirect = false;
-                indirectNeighbors = [self.neighborNorth, self.neighborWest]
+                indirectNeighbors = [self.neighborNorth, self.neighborWest];
+                againstTheWind = [self.neighborEast, self.neighborSouth];
                 break;
             case town.compass.SOUTH.index:
                 directNeighbor = self.neighborNorth;
-                indirectNeighbors = [self.neighborEast, self.neighborWest]
+                indirectNeighbors = [self.neighborEast, self.neighborWest];
+                againstTheWind = [self.neighborSouth];
                 break;
             case town.compass.SOUTHWEST.index:
                 isDirect = false;
-                indirectNeighbors = [self.neighborNorth, self.neighborEast]
+                indirectNeighbors = [self.neighborNorth, self.neighborEast];
+                againstTheWind = [self.neighborSouth, self.neighborWest];
                 break;
             case town.compass.WEST.index:
                 directNeighbor = self.neighborEast;
-                indirectNeighbors = [self.neighborNorth, self.neighborSouth]
+                indirectNeighbors = [self.neighborNorth, self.neighborSouth];
+                againstTheWind = [self.self.neighborWest];
                 break;
             case town.compass.NORTHWEST.index:
                 isDirect = false;
-                indirectNeighbors = [self.neighborSouth, self.neighborEast]
+                indirectNeighbors = [self.neighborSouth, self.neighborEast];
+                againstTheWind = [self.self.neighborWest, self.neighborNorth];
                 break;
             default:
                 // you've invented a new compass direction, no rainfall for you
@@ -290,13 +312,13 @@ town.Tile = function (x, y, maximumChange, averageSurroundings, availableTerrain
         if (isDirect) {
             // all of the rain from direct path of wind - add up the sources unless they're off the map
             if (directNeighbor) 
-                self.weather.addDirectRainSource(directNeighbor.weather, .8);
+                self.weather.addDirectRainSource(directNeighbor.weather, .7);
 
             if (indirectNeighbors[0])
-                self.weather.addDirectRainSource(indirectNeighbors[0].weather, .1);
+                self.weather.addDirectRainSource(indirectNeighbors[0].weather, .15);
 
             if (indirectNeighbors[1])
-                self.weather.addDirectRainSource(indirectNeighbors[1].weather, .1);
+                self.weather.addDirectRainSource(indirectNeighbors[1].weather, .15);
         }
         else {
             if (indirectNeighbors[0])
@@ -304,6 +326,11 @@ town.Tile = function (x, y, maximumChange, averageSurroundings, availableTerrain
 
             if (indirectNeighbors[1])
                 self.weather.addDirectRainSource(indirectNeighbors[1].weather, .5);
+        }
+
+        for (var neighborIndex in againstTheWind) {
+            if(againstTheWind[neighborIndex])
+                self.weather.addDirectRainSource(againstTheWind[neighborIndex].weather, .05);
         }
 
         //console.log(self.name + " calculating rainfall - final amount = " + rainfallAmount);
@@ -532,9 +559,8 @@ town.Weather = function (parentName) {
     // if I get around to modeling windspeed/flow then that should
     //  be used to calculate max distance and have AVG_RAIN_DISTANCE replaced
     //  with average distance traveled between rainstorms
-    var AVG_RAIN_DISTANCE = 5;
-    var MAX_WIND_RAIN_DISTANCE = 8;
-    var PROBABILITY_OF_RAIN = [ .05, .05, .1, .1, .2, .3, .1, .05, .05 ]
+    var AVG_RAIN_FREQUENCY = 5;
+    var MAX_WIND_RAIN_DISTANCE = 4;
 
     this.resetRainSources = function () {
         this.rainSources = new Array(MAX_WIND_RAIN_DISTANCE);
@@ -544,9 +570,9 @@ town.Weather = function (parentName) {
         // evaporation is per month, rain frequency is per distance
         //  let's assume it's also per month for now
         if (this.rainSources[0])
-            self.rainSources[0] += evaporation * AVG_RAIN_DISTANCE; // amount of rain available for a given rainy day
+            self.rainSources[0] += evaporation; // amount of rain available for a given rainy day
         else
-            self.rainSources[0] = evaporation * AVG_RAIN_DISTANCE;
+            self.rainSources[0] = evaporation;
     };
 
     this.addDirectRainSource = function (weather, percentImpact) {
@@ -568,17 +594,12 @@ town.Weather = function (parentName) {
 
     this.calculateAverageRainfall = function () {
 
-        // on average, precipitation travels RAIN_FREQUENCY tiles before falling, so let's average sources
+        // you receive a percentage of rain from tiles within MAX_WIND_RAIN_DISTANCE distance
         var total = 0;
         var max = 0;
         for (var distanceIndex in self.rainSources) {
-            total += self.rainSources[distanceIndex] * PROBABILITY_OF_RAIN[distanceIndex];
-            if (max < self.rainSources[distanceIndex])
-                max = self.rainSources[distanceIndex];
+            total += self.rainSources[distanceIndex] * 1 / MAX_WIND_RAIN_DISTANCE;
         }
-
-        if (total > max)
-            total = max;
 
         // round to something readable/useful
         total = Math.round(total * 20) / 20;
