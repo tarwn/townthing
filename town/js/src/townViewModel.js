@@ -624,6 +624,18 @@ town.Weather = function (parentName) {
     this.averageRainfall = ko.observable(0);
     this.windDirection = ko.observable(town.compass.EAST);
 
+    // hacky hacky, need a bette rplace for this
+    this.averageRainfallAsRGB = function(){
+        var nonBlue = Math.floor(200 - (self.averageRainfall() / 8) * 255);
+        if(nonBlue < 0)
+            nonBlue = 0;
+        nonBlue = ('0' + nonBlue.toString(16)).slice(-2);
+        var blue = Math.floor(255 - (self.averageRainfall() / 10) * 255);
+        blue = ('0' + blue.toString(16)).slice(-2);
+        return '#' + nonBlue + nonBlue + blue;
+    };
+    
+
     // track direct rain source amount
     this.rainSources = new Array(MAX_WIND_RAIN_DISTANCE);
 

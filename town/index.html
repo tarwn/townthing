@@ -44,15 +44,15 @@
 
     .tile-rainfall {
         position: absolute;
-        left: 0px;
-        top: 0px;
-        width: 30px;
-        height: 30px;
+        left: 10px;
+        top: 10px;
+        width: 10px;
+        height: 10px;
         line-height: 30px;
         text-align: center;
         background-color: #99DD99;
         z-index: 50;
-        opacity: .5;
+        opacity: 1;
     }
 
     /* terrain types of tile-bg */
@@ -245,7 +245,7 @@
                 <div class="tile-L1" data-bind="foreach: trees, attr: { 'data-name': name, 'data-desc': toString }">
                     <div class="terrain-tree" data-bind="css: 'terrain-tree-' + classVariant + ' terrain-tree-s' + size(), style: { left: x * 10 + 5 - 5 * size() / 100, top: y * 10 + 5 - 5 * size() / 100 }, attr: { 'data-name': name, 'data-desc': toString }"></div>
                 </div>
-                <div class="tile-rainfall" data-bind="visible: $root.showRainfall() && weather.averageRainfall() > 0.05, attr: { 'data-name': name, 'data-desc': toString }, style: { 'background-color': '#0000' + Math.floor(255 - (weather.averageRainfall() / 10) * 255).toString(16) }">
+                <div class="tile-rainfall" data-bind="visible: $root.showRainfall() && weather.averageRainfall() > 0.05, attr: { 'data-name': name, 'data-desc': toString }, style: { 'background-color': weather.averageRainfallAsRGB() }">
                 </div>
             </div>
         </div>
