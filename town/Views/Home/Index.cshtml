@@ -163,9 +163,9 @@
     Status: <span data-bind="text: stateDescription"></span><br />
     Map Age: <span data-bind="text: mapAge"></span> ticks<br />
     Wind Dir: <span data-bind="text: globalWindDirection() ? globalWindDirection().name : 'N/A'"></span><br />
-    Change Wind: <input type="button" data-bind="click: generateWindDirection"/><br />
+    Change Wind: <input type="button" data-bind="click: generateWindDirection, enable: state() == 'ready'" value="Change" /><br />
     Run Speed: <span data-bind="text: speed"></span><br />
-    Start/Stop: <input type="button" data-bind="click: flipSpeed, value: (speed() == 0 ? 'start' : 'pause')"/><br />
+    Start/Stop: <input type="button" data-bind="click: flipSpeed, value: (speed() == 0 ? 'start' : 'pause'), enable: state() == 'ready'"/><br />
     Show Rainfall? <input type="checkbox" data-bind="checked: showRainfall" />
     <div data-bind="with: activeSelection">
         Selection: <span data-bind="text: description"></span>
@@ -237,6 +237,8 @@
 
     ko.applyBindings(viewmodel);
     viewmodel.initialize();
+
+    viewmodel.flipSpeed();  //start running instead of paused
 
     function center(x, width, percent) {
         return x + width + (width / 2) * (1 - percent);
