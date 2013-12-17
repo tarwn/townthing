@@ -99,10 +99,12 @@ town.TownViewModel = function (width, height) {
         self.stateDescription(message);
     };
 
-    this.recalculateRainRate = function(){
-        for (var i = 0; i < 6; i++) {
+    this.recalculateRainRate = function(times){
+        times = times || 1;
+        for (var i = 0; i < times; i++) {
+            // need a way to specify direction to traverse tiles or just build it into the method to always use global wind direction
             forEachTile(function (tile, x, y) {
-                tile.initializeRainRate();
+                tile.recalculateRainRate();
             });
         }
     };
@@ -251,7 +253,7 @@ town.Tile = function (x, y, maximumChange, averageSurroundings, availableTerrain
         }
     };
 
-    this.initializeRainRate = function () {
+    this.recalculateRainRate = function () {
         // the goal is to get 30-60in/year for forests
         // and ~60 for water tiles - used lake charles in louisiana for this figure
         // not going to include seasonal variance yet, that factor can be added later along w/ seasonal seeding/growth
@@ -578,8 +580,19 @@ town.Tree = function (parentName, x, y, size) {
     this.name = "[tree " + x + "," + y + " in " + parentName + "]";
     this.size = ko.observable(size);
     this.ticks = Math.random() * town.config.TREESEEDTICKS;
-    this.classVariant = parseInt(Math.random() * 4); //hacky index for image tile selection to create variety
     this.tickWithoutSufficientWater = 0;
+    
+    this.terrainClassVariant = ko.observable('');
+    this.terrainTreeType = null;
+
+    this.updateTreeType = function(treeType){
+        if(self.terrainTreeType != treeType){
+            console.log(self.name + ' is changing to type ' + treeType.class)
+            self.terrainTreeType = treeType;
+            var variant = Math.floor(Math.random() * treeType.variants);
+            self.terrainClassVariant(treeType.class + '-' + variant);
+        }
+    };
 
     // toString
     this.toString = ko.computed(function () {
@@ -587,6 +600,7 @@ town.Tree = function (parentName, x, y, size) {
     }, this);
 
     this.onTick = function (onReadyToSeed) {
+        self.updateTreeType(town.Tree.Type.HEALTHY);
         this.tickWithoutSufficientWater = 0;
         this.ticks++;
         if (self.size() < 100 && this.ticks >= town.config.TREEGROWTICKS) {
@@ -608,14 +622,30 @@ town.Tree = function (parentName, x, y, size) {
 
     this.onDrought = function (onTreeDied) {
         this.tickWithoutSufficientWater++;
-
-        if (this.tickWithoutSufficientWater > this.size() / 5) {
+        
+        if (this.tickWithoutSufficientWater > 40) {
+            // dead
             //console.log(self.name + " is suffering from drought");
             onTreeDied();
+        }
+        else if(this.tickWithoutSufficientWater > 20)
+        {
+            // dying
+            self.updateTreeType(town.Tree.Type.DEAD);
+        }
+        else if(this.tickWithoutSufficientWater > 5)
+        {
+            // drying out
+            self.updateTreeType(town.Tree.Type.DRY);
         }
     };
 };
 town.Tree.evaporation = .5;
+town.Tree.Type = {
+    HEALTHY:    { index: 0, variants: 4, class: 'terrain-tree' },
+    DRY:        { index: 1, variants: 4, class: 'terrain-drytree' },
+    DEAD:       { index: 2, variants: 2, class: 'terrain-deadtree' }
+};
 
 town.Weather = function (parentName) {
     var self = this;
