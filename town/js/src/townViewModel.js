@@ -730,7 +730,7 @@ town.Terrain = {
     ROCK:       { index: 6, symbol: '+', variants: 1, class: 'terrain-rock' },
     SWAMP:      { index: 7, symbol: ';', variants: 1, class: 'terrain-swamp' },
     FOREST:     { index: 8, symbol: 'P', variants: 1, class: 'terrain-forest' },
-    JUNGLE:     { index: 9, symbol: 'Y', variants: 1, class: 'terrain-jungle' },
+    JUNGLE:     { index: 9, symbol: 'Y', variants: 1, class: 'terrain-jungle' }
 };
 
 town.Ecology = {
@@ -750,7 +750,7 @@ town.compass = {
     SOUTH:      { index: 4, name: "South" },
     SOUTHWEST:  { index: 5, name: "Southwest" },
     WEST:       { index: 6, name: "West" },
-    NORTHWEST:  { index: 7, name: "Northwest" },
+    NORTHWEST:  { index: 7, name: "Northwest" }
 };
 town.compass.raw = [ town.compass.NORTH, town.compass.NORTHEAST, town.compass.EAST, town.compass.SOUTHEAST,
                     town.compass.SOUTH, town.compass.SOUTHWEST, town.compass.WEST, town.compass.NORTHWEST ];
