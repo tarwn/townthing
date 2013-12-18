@@ -1,0 +1,170 @@
+﻿
+/*-------------------------------------------------------------------
+MapArea 
+-------------------------------------------------------------------*/
+
+.map {
+    display: inline-block; /* crops edges */
+    font-size: 0px; /* removes extra margins between tiles due to whitespace */
+    overflow: hidden; /* removes extra margins between tiles due to whitespace */
+    border: 3px solid grey;
+}
+
+/*-------------------------------------------------------------------
+MapArea - Tiles
+    Major tile types in levels and the active selection area
+-------------------------------------------------------------------*/
+.tile {
+    display: inline-block;
+    position: relative;
+    width: 30px;
+    height: 30px;
+    text-align: center;
+    line-height: 30px;
+    /*border: 1px solid grey;*/
+    left: 0px;
+}
+
+.tile-bg {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    background-repeat: no-repeat;
+    left: -5px;
+    top: -5px;
+    text-align: center;
+    line-height: 40px;
+}
+
+.tile-L1 {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    background-repeat: no-repeat;
+    left: 0px;
+    top: 0px;
+    text-align: center;
+    line-height: 10px;
+}
+
+.active-selection {
+    border: 1px solid yellow;
+    position: absolute;
+    z-index: 1000;
+}
+
+.active-selection-body {
+    background-color: white;
+    opacity: .1;
+    width: 100%;
+    height: 100%;
+}
+
+/*-------------------------------------------------------------------
+Terrain
+    All of the terrain modifier classes: water, dirt, grass 
+    varieties
+-------------------------------------------------------------------*/
+.terrain-water {
+    z-index: 1;
+}
+.terrain-water-0 {    background-image: url("../images/terrain/water_0.png");   }
+.terrain-water-1 {    background-image: url("../images/terrain/water_0.png");   }
+
+.terrain-dirt {
+    z-index: 3;
+}
+.terrain-dirt-0 {     background-image: url("../images/terrain/dirt_0.png");    }
+.terrain-dirt-1 {     background-image: url("../images/terrain/dirt_1.png");    }
+.terrain-dirt-2 {     background-image: url("../images/terrain/dirt_2.png");    }
+
+.terrain-grass {
+    z-index: 4;
+}
+.terrain-grass-0 {    background-image: url("../images/terrain/grass_0.png");   }
+.terrain-grass-1 {    background-image: url("../images/terrain/grass_1.png");   }
+.terrain-grass-2 {    background-image: url("../images/terrain/grass_2.png");   }
+.terrain-grass-3 {    background-image: url("../images/terrain/grass_3.png");   }
+
+.terrain-drygrass {
+    z-index: 4;
+}
+.terrain-drygrass-0 { background-image: url("../images/terrain/drygrass_0.png");    }
+.terrain-drygrass-1 { background-image: url("../images/terrain/drygrass_1.png");    }
+.terrain-drygrass-2 { background-image: url("../images/terrain/drygrass_2.png");    }
+.terrain-drygrass-3 { background-image: url("../images/terrain/drygrass_3.png");    }
+
+/*-------------------------------------------------------------------
+Trees
+    The main tree layout, tree varieties, and tree sizes
+-------------------------------------------------------------------*/
+.terrain-tree {
+    z-index: 10;
+    position: absolute;
+    background-position: center;
+    background-repeat: no-repeat;
+    border-radius: 5px;
+}
+
+.terrain-tree-0 {   background-image: url("../images/terrain/treetop_0.png");    }
+.terrain-tree-1 {   background-image: url("../images/terrain/treetop_1.png");    }
+.terrain-tree-2 {   background-image: url("../images/terrain/treetop_1.png");    }
+.terrain-tree-3 {   background-image: url("../images/terrain/treetop_1.png");    }
+.terrain-drytree-0 {   background-image: url("../images/terrain/drytreetop_0.png");    }
+.terrain-drytree-1 {   background-image: url("../images/terrain/drytreetop_1.png");    }
+.terrain-drytree-2 {   background-image: url("../images/terrain/drytreetop_1.png");    }
+.terrain-drytree-3 {   background-image: url("../images/terrain/drytreetop_1.png");    }
+.terrain-deadtree-0 {  background-image: url("../images/terrain/deadtreetop_0.png");    }
+
+.terrain-tree-s0 {  visibility: hidden;  }
+.terrain-tree-s10 { width: 1px; height: 1px;   }
+.terrain-tree-s20 { width: 2px; height: 2px;   }
+.terrain-tree-s30 { width: 3px; height: 3px;   }
+.terrain-tree-s40 { width: 4px; height: 4px;   }
+.terrain-tree-s50 { width: 5px; height: 5px;   }
+.terrain-tree-s60 { width: 6px; height: 6px;   }
+.terrain-tree-s70 { width: 7px; height: 7px;   }
+.terrain-tree-s80 { width: 8px; height: 8px;   }
+.terrain-tree-s90 { width: 9px; height: 9px;   }
+.terrain-tree-s100{ width: 10px;height: 10px;  }
+
+/*-------------------------------------------------------------------
+Weather display
+    Display of rain levels, wind direction
+-------------------------------------------------------------------*/
+.tile-rainfall {
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    width: 10px;
+    height: 10px;
+    line-height: 30px;
+    text-align: center;
+    background-color: #99DD99;
+    z-index: 50;
+    opacity: 1;
+}
+.tile-rainfall-0 {
+    display: none;
+}
+    
+/* wind direction */
+.tile-wind {
+    position: absolute;
+    left: 20px;
+    top: 0px;
+    width: 10px;
+    height: 10px;
+    line-height: 10px;
+    text-align: center;
+    z-index: 50;
+    opacity: .5;
+}
+.tile-wind-North     {   background-image: url("../images/terrain/wind_north.png");    }
+.tile-wind-NorthEast {   background-image: url("../images/terrain/wind_northeast.png");    }
+.tile-wind-East      {   background-image: url("../images/terrain/wind_east.png");    }
+.tile-wind-SouthEast {   background-image: url("../images/terrain/wind_southeast.png");    }
+.tile-wind-South     {   background-image: url("../images/terrain/wind_south.png");    }
+.tile-wind-SouthWest {   background-image: url("../images/terrain/wind_southwest.png");    }
+.tile-wind-West      {   background-image: url("../images/terrain/wind_west.png");    }
+.tile-wind-NorthWest {   background-image: url("../images/terrain/wind_northwest.png");    }
