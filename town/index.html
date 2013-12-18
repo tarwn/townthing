@@ -9,7 +9,9 @@
     Status: <span data-bind="text: stateDescription"></span><br />
     Map Age: <span data-bind="text: mapAge"></span> ticks<br />
     Wind Dir: <span data-bind="text: globalWindDirection() ? globalWindDirection().name : 'N/A'"></span><br />
-    Change Wind: <input type="button" data-bind="click: generateWindDirection, enable: state() == 'ready'" value="Change" /><br />
+    Change Wind: <input type="button" data-bind="click: generateWindDirection, enable: state() == 'ready'" value="Change" />
+                   <input type="button" data-bind="click: onSwirly", enable: state() == 'ready'" value="Swirly!" /><br />
+
     Run Speed: <span data-bind="text: speed"></span><br />
     Start/Stop: <input type="button" data-bind="click: flipSpeed, value: (speed() == 0 ? 'start' : 'pause'), enable: state() == 'ready'"/><br />
     Show Weather? <input type="checkbox" data-bind="checked: showRainfall" />
@@ -67,7 +69,7 @@
         viewmodel.tiles[8][10] = new Tile(0, 0, 0, 0, [terrain.WATER]);
         viewmodel.tiles[9][8] = new Tile(0, 0, 0, 0, [terrain.WATER]);
         viewmodel.tiles[9][9] = new Tile(0, 0, 0, 0, [terrain.WATER]);
-        viewmodel.globalWindDirection(compass.EAST);
+        viewmodel.globalWindDirection(compass.WEST);
         // -- end large map
 
         //-- Small map for testing

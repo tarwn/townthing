@@ -70,6 +70,23 @@ define(['knockout', 'configuration', 'terrain', 'compass', 'tile'],
             self.activeSelection(null);
         };
 
+        this.onSwirly = function () {
+            // windy wind!
+            var topHalf = self.height / 2;
+            var leftHalf = self.width / 2;
+
+            forEachTile(function (tile, x, y) {
+                if(y < topHalf && x > y && self.width - x > y)
+                    tile.weather.windDirection(compass.EAST);
+                else if (y > topHalf && x > self.height - y && self.width - x > self.height - y)
+                    tile.weather.windDirection(compass.WEST);
+                else if (x < leftHalf && y > x && self.height - y > x)
+                    tile.weather.windDirection(compass.NORTH);
+                else
+                    tile.weather.windDirection(compass.SOUTH);
+            });
+        };
+
         function forEachTile(method) {
             for (var tileY in self.tiles) {
                 for (var tileX in self.tiles[tileY]) {
@@ -118,6 +135,10 @@ define(['knockout', 'configuration', 'terrain', 'compass', 'tile'],
             var globalWindDir = Math.floor(Math.random() * 8);
             self.globalWindDirection(compass.raw[globalWindDir]);
 
+            this.applyWindGlobally();
+        };
+
+        this.applyWindGlobally = function () {
             forEachTile(function (tile, x, y) {
                 tile.weather.windDirection(self.globalWindDirection());
             });
@@ -153,6 +174,9 @@ define(['knockout', 'configuration', 'terrain', 'compass', 'tile'],
             // assign wind direction - currently global
             if (!self.globalWindDirection()) {
                 self.generateWindDirection();
+            }
+            else {
+                self.applyWindGlobally();
             }
 
             //and now use wind to push rainfall around the map, starting w/ water tiles
