@@ -14,5 +14,9 @@ define([], function () {
     compass.raw = [compass.NORTH, compass.NORTHEAST, compass.EAST, compass.SOUTHEAST,
                    compass.SOUTH, compass.SOUTHWEST, compass.WEST, compass.NORTHWEST];
 
+    compass.compare = function (direction, otherDirection) {
+        return Math.abs(direction.index - (otherDirection.index + 8)) % 8;
+    };
+    
     return compass;
 });

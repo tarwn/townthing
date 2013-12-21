@@ -37,11 +37,6 @@ define(['knockout', 'configuration', 'terrain', 'compass', 'tile'],
         this.onTick = function () {
             self.mapAge(self.mapAge() + 1);
 
-            // this can't be good for performance...recalculating whole rain map every 10 ticks
-            if (self.mapAge() % 10) {
-                self.recalculateRainRate();
-            }
-
             forEachTile(function (tile, x, y) {
                 tile.onTick();
             });
@@ -99,16 +94,6 @@ define(['knockout', 'configuration', 'terrain', 'compass', 'tile'],
             console.log("status change - " + state + " - " + message);
             self.state(state);
             self.stateDescription(message);
-        };
-
-        this.recalculateRainRate = function (times) {
-            times = times || 1;
-            for (var i = 0; i < times; i++) {
-                // need a way to specify direction to traverse tiles or just build it into the method to always use global wind direction
-                forEachTile(function (tile, x, y) {
-                    tile.recalculateRainRate();
-                });
-            }
         };
 
         this.generateMap = function () {
@@ -178,11 +163,6 @@ define(['knockout', 'configuration', 'terrain', 'compass', 'tile'],
             else {
                 self.applyWindGlobally();
             }
-
-            //and now use wind to push rainfall around the map, starting w/ water tiles
-            //  going to build up rain potential in each tile based on amount it generates
-            // let's try brute force
-            self.recalculateRainRate();
 
             self.setState("initializing", "Aging the map...");
 

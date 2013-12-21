@@ -6,10 +6,28 @@ define(['knockout', 'compass'],
         var self = this;
         this.name = "[weather for " + parentName + "]";
 
-        this.averageRainfall = ko.observable(0);
+        this.weatherSources = [];
         this.windDirection = ko.observable(compass.EAST);
 
-        // hacky hacky, need a bette rplace for this
+        this.currentRainSource = 0;
+        this.nextRainSource = 0;
+        this.soilMoisture = ko.observable(0);
+        this.waterForPlantConsumption = 0;
+        this.averageRainfall = ko.observable(0);
+        this.lastMonth = [];
+
+        this.initialize = function (windDirection) {
+            self.weatherSources = [];
+        };
+
+        this.addNeighboringWeather = function(directionOfNeighbor, weather) {
+            self.weatherSources.push({
+                direction: directionOfNeighbor,
+                source: weather
+            });
+        };
+
+        // hacky hacky, need a better place for this
         this.averageRainfallAsRGB = function () {
             var nonBlue = Math.floor(200 - (self.averageRainfall() / 8) * 255);
             if (nonBlue < 0)
@@ -19,61 +37,141 @@ define(['knockout', 'compass'],
             blue = ('0' + blue.toString(16)).slice(-2);
             return '#' + nonBlue + nonBlue + blue;
         };
+        
+        // basing this off of numbers from https://aggie-horticulture.tamu.edu/earthkind/drought/drought-management-for-commercial-horticulture/so-what-constitutes-an-effective-rain-event/
+        //  using loam figures (1.5-2.5in rain to wet 12in of soil) and 3ft depth and assuming best case timing:
+        //  6 inches of rain
+        this.maximumSoilMoisture = 6;
+        this.maximumEvaporationOnWetDay = 5;
 
+        this.onTick = function (isRainDay, maxPlantConsumption, terrainEvaporationOnDryDay) {
+            console.log("onTick(" + isRainDay + "," + maxPlantConsumption + "," + terrainEvaporationOnDryDay + ")");
 
-        // track direct rain source amount
-        this.rainSources = new Array(MAX_WIND_RAIN_DISTANCE);
+            // clear current rain source, pull in new amounts
+            self.currentRainSource = self.getRainFromNeighbors();
 
-        // if I get around to modeling windspeed/flow then that should
-        //  be used to calculate max distance and have AVG_RAIN_DISTANCE replaced
-        //  with average distance traveled between rainstorms
-        var AVG_RAIN_FREQUENCY = 5;
-        var MAX_WIND_RAIN_DISTANCE = 4;
+            console.log("onTick(" + isRainDay + "," + maxPlantConsumption + "," + terrainEvaporationOnDryDay + ") - currentrainSource=" + self.currentRainSource);
 
-        this.resetRainSources = function () {
-            this.rainSources = new Array(MAX_WIND_RAIN_DISTANCE);
+            // always start wih available soil moisture
+            var availableWater = self.soilMoisture();
+
+            // make it rain
+            if (isRainDay) {
+                availableWater += self.currentRainSource;
+                self.currentRainSource = 0;
+            }
+
+            console.log("onTick(" + isRainDay + "," + maxPlantConsumption + "," + terrainEvaporationOnDryDay + ") - after rain - availableWater=" + availableWater);
+
+            // calculate available plant consumption amount
+            availableWater = self.updateWaterForPlantConsumption(availableWater, maxPlantConsumption);
+
+            console.log("onTick(" + isRainDay + "," + maxPlantConsumption + "," + terrainEvaporationOnDryDay + ") - after plant - availableWater=" + availableWater);
+
+            // apply evaporation
+            var evaporationAmount = self.calculateEvaporation(availableWater, isRainDay, self.maximumEvaporationOnWetDay, terrainEvaporationOnDryDay);
+            self.currentRainSource += evaporationAmount;
+            availableWater -= evaporationAmount;
+            
+            console.log("onTick(" + isRainDay + "," + maxPlantConsumption + "," + terrainEvaporationOnDryDay + ") - after evap - availableWater=" + availableWater + ",evap=" + evaporationAmount);
+
+            // calculate new soil moisture
+            if (availableWater > self.maximumSoilMoisture) {
+                self.soilMoisture(self.maximumSoilMoisture);
+                availableWater = availableWater - self.maximumSoilMoisture;
+            }
+            else {
+                self.soilMoisture(availableWater);
+                availableWater = 0;
+            }
+
+            console.log("onTick(" + isRainDay + "," + maxPlantConsumption + "," + terrainEvaporationOnDryDay + ") - after soak - availableWater=" + availableWater);
+
+            // extra water?
+                      
+
+            // set tomorrows rain sources
+            self.nextRainSource = self.currentRainSource;
+
+            // update average rainfall value
+            self.updateAverageRainfall(isRainDay ? self.currentRainSource : 0);
+
+            return availableWater;
         };
 
-        this.addLocalEvaporationAsRainSource = function (evaporation) {
-            // evaporation is per month, rain frequency is per distance
-            //  let's assume it's also per month for now
-            if (this.rainSources[0])
-                self.rainSources[0] += evaporation; // amount of rain available for a given rainy day
-            else
-                self.rainSources[0] = evaporation;
+        this.getRainFromNeighbors = function () {
+            var rainAmount = 0;
+            for (var sourceIndex in self.weatherSources) {
+                console.log("getting rain for " + self.weatherSources[sourceIndex].direction.name + " from neighbor " + self.weatherSources[sourceIndex].source.currentRainSource + " " + self.weatherSources[sourceIndex].source.windDirection().name);
+                rainAmount += self.getRainSourcePercentage(self.weatherSources[sourceIndex].direction, self.weatherSources[sourceIndex].source)
+            }
+            return rainAmount;
         };
 
-        this.addDirectRainSource = function (weather, percentImpact) {
-            // rainfall travels up to a certain distance before falling
-            //  we'll calculate as if most of it travels directly with wind and
-            //  a small part disperses to sides, thus the percentImpact
-
-            for (var sourceDistanceIndex = 0; sourceDistanceIndex < weather.rainSources.length; sourceDistanceIndex++) {
-                if (sourceDistanceIndex < MAX_WIND_RAIN_DISTANCE && weather.rainSources[sourceDistanceIndex]) {
-                    if (self.rainSources[sourceDistanceIndex + 1]) {
-                        self.rainSources[sourceDistanceIndex + 1] += weather.rainSources[sourceDistanceIndex] * percentImpact;
-                    }
-                    else {
-                        self.rainSources[sourceDistanceIndex + 1] = weather.rainSources[sourceDistanceIndex] * percentImpact;
-                    }
-                }
+        this.getRainSourcePercentage = function (sourceDirection, source) {
+            var diff = compass.compare(sourceDirection, source.windDirection());
+            switch (diff) {
+                case 4: // direct wind
+                    return source.nextRainSource * Weather.RAINFACTOR.d180;
+                case 3: // 45 degrees off direct
+                case 5:
+                    return source.nextRainSource * Weather.RAINFACTOR.d135;
+                case 2: // 90 degrees off direct
+                case 6:
+                    return source.nextRainSource * Weather.RAINFACTOR.d90;
+                case 1: // 135 degrees off direct
+                case 7:
+                    return source.nextRainSource * Weather.RAINFACTOR.d45;
+                case 0: // opposed wind
+                    return source.nextRainSource * Weather.RAINFACTOR.d0;
+                default:
+                    return 0;
             }
         };
 
-        this.calculateAverageRainfall = function () {
-
-            // you receive a percentage of rain from tiles within MAX_WIND_RAIN_DISTANCE distance
-            var total = 0;
-            var max = 0;
-            for (var distanceIndex in self.rainSources) {
-                total += self.rainSources[distanceIndex] * 1 / MAX_WIND_RAIN_DISTANCE;
+        this.updateWaterForPlantConsumption = function (availableWater, maxPlantConsumption) {
+            if (maxPlantConsumption > availableWater) {
+                self.waterForPlantConsumption = availableWater;
+                return 0;
             }
-
-            // round to something readable/useful
-            total = Math.round(total * 20) / 20;
-
-            self.averageRainfall(total);
+            else {
+                self.waterForPlantConsumption = maxPlantConsumption;
+                return availableWater - maxPlantConsumption;
+            }
         };
+
+        this.updateAverageRainfall = function (amountOfRainfall) {
+            self.lastMonth.push(amountOfRainfall);
+
+            while (self.lastMonth.length > 30)
+                self.lastMonth.shift();
+
+            var subtotal = 0;
+            for (var i = 0; i < self.lastMonth.length; i++) {
+                subtotal += self.lastMonth[i];
+            }
+            self.averageRainfall(subtotal / self.lastMonth.length);
+        };
+    };
+
+    Weather.RAINFACTOR = {
+        d0:      .00,
+        d45:     .00,
+        d90:     .05,
+        d135:    .15,
+        d180:    .60,
+        d225:    .15,
+        d270:    .05,
+        d315:    .00
+    };
+    
+    Weather.prototype.calculateEvaporation = function (availableWater, isRainyDay, maxEvaporationOnRainyDay, maxEvaporationOnDryDay) {
+        var maxEvaporation = isRainyDay ? maxEvaporationOnRainyDay : maxEvaporationOnDryDay;
+
+        if (availableWater > maxEvaporation)
+            return maxEvaporation;
+        else 
+            return availableWater;
     };
 
     return Weather;

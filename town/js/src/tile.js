@@ -35,17 +35,22 @@ define(['knockout', 'ecologyConfiguration', 'terrain', 'compass', 'utility', 'tr
         // weather
         this.weather = new Weather(this.name);
 
-        // toString
-        this.toString = ko.computed(function () {
-            return "[tile " + self.x + "," + self.y + " rain=" + this.weather.averageRainfall() + ", windDir=" + this.weather.windDirection().name + "]";
-        }, this);
-
         // subtiles - references objects that use the space of each subtile
         this.subtiles = new Array(9);
         // trees are a specific set of references for display purposes - each on takes one subtile
         this.trees = ko.observableArray([]); //
 
         this.initialize = function () {
+            self.weather.initialize();
+            if (self.neighborNorth)
+                self.weather.addNeighboringWeather(compass.NORTH, self.neighborNorth.weather);
+            if (self.neighborEast)
+                self.weather.addNeighboringWeather(compass.EAST, self.neighborEast.weather);
+            if (self.neighborSouth)
+                self.weather.addNeighboringWeather(compass.SOUTH, self.neighborSouth.weather);
+            if (self.neighborWest)
+                self.weather.addNeighboringWeather(compass.WEST, self.neighborWest.weather);
+
             if (self.terrain().isWater) {
                 //console.log(self.name + " water check");
                 if ((!self.neighborWest || self.neighborWest.terrain().isWater)
@@ -62,97 +67,7 @@ define(['knockout', 'ecologyConfiguration', 'terrain', 'compass', 'utility', 'tr
             }
         };
 
-        this.recalculateRainRate = function () {
-            // the goal is to get 30-60in/year for forests
-            // and ~60 for water tiles - used lake charles in louisiana for this figure
-            // not going to include seasonal variance yet, that factor can be added later along w/ seasonal seeding/growth
-            // the goal is to create a method that simulates reasonable rainfall amounts without actually modelling
-            //  evaporation rates, humidity, cloud cycles, etc
-
-            self.weather.resetRainSources();
-            self.weather.addLocalEvaporationAsRainSource(self.getEvaporationAmount());
-
-            // how much do I receive via wind from neighbors, using a multiplier based on their rainfall and wind direction
-            //  made up numbers, will test to see what they end up doing
-            var isDirect = true,
-                directNeighbor = null,
-                indirectNeighbors = [],
-                    againstTheWind = [];
-
-            switch (self.weather.windDirection().index) {
-                case compass.NORTH.index:
-                    directNeighbor = self.neighborSouth;
-                    indirectNeighbors = [self.neighborEast, self.neighborWest];
-                    againstTheWind = [self.neighborNorth];
-                    break;
-                case compass.NORTHEAST.index:
-                    isDirect = false;
-                    indirectNeighbors = [self.neighborSouth, self.neighborWest];
-                    againstTheWind = [self.neighborNorth, self.neighborEast];
-                    break;
-                case compass.EAST.index:
-                    directNeighbor = self.neighborWest;
-                    indirectNeighbors = [self.neighborNorth, self.neighborSouth];
-                    againstTheWind = [self.neighborEast];
-                    break;
-                case compass.SOUTHEAST.index:
-                    isDirect = false;
-                    indirectNeighbors = [self.neighborNorth, self.neighborWest];
-                    againstTheWind = [self.neighborEast, self.neighborSouth];
-                    break;
-                case compass.SOUTH.index:
-                    directNeighbor = self.neighborNorth;
-                    indirectNeighbors = [self.neighborEast, self.neighborWest];
-                    againstTheWind = [self.neighborSouth];
-                    break;
-                case compass.SOUTHWEST.index:
-                    isDirect = false;
-                    indirectNeighbors = [self.neighborNorth, self.neighborEast];
-                    againstTheWind = [self.neighborSouth, self.neighborWest];
-                    break;
-                case compass.WEST.index:
-                    directNeighbor = self.neighborEast;
-                    indirectNeighbors = [self.neighborNorth, self.neighborSouth];
-                    againstTheWind = [self.neighborWest];
-                    break;
-                case compass.NORTHWEST.index:
-                    isDirect = false;
-                    indirectNeighbors = [self.neighborSouth, self.neighborEast];
-                    againstTheWind = [self.neighborWest, self.neighborNorth];
-                    break;
-                default:
-                    // you've invented a new compass direction, no rainfall for you
-                    return;
-            }
-
-            if (isDirect) {
-                // all of the rain from direct path of wind - add up the sources unless they're off the map
-                if (directNeighbor)
-                    self.weather.addDirectRainSource(directNeighbor.weather, .7);
-
-                if (indirectNeighbors[0])
-                    self.weather.addDirectRainSource(indirectNeighbors[0].weather, .15);
-
-                if (indirectNeighbors[1])
-                    self.weather.addDirectRainSource(indirectNeighbors[1].weather, .15);
-            }
-            else {
-                if (indirectNeighbors[0])
-                    self.weather.addDirectRainSource(indirectNeighbors[0].weather, .5);
-
-                if (indirectNeighbors[1])
-                    self.weather.addDirectRainSource(indirectNeighbors[1].weather, .5);
-            }
-
-            for (var neighborIndex in againstTheWind) {
-                if (againstTheWind[neighborIndex])
-                    self.weather.addDirectRainSource(againstTheWind[neighborIndex].weather, .05);
-            }
-
-            //console.log(self.name + " calculating rainfall - final amount = " + rainfallAmount);
-            self.weather.calculateAverageRainfall();
-        };
-
+        
         this.getEvaporationAmount = function () {
             return (self.terrain().evaporation || 0)
                 + self.trees().length * Tree.evaporation;
@@ -295,8 +210,14 @@ define(['knockout', 'ecologyConfiguration', 'terrain', 'compass', 'utility', 'tr
         };
 
         this.onTick = function () {
-
             self.terrainAge++;
+
+            // weather
+            var isRainDay = self.terrainAge % 3 == 0;
+            var waterForPlants = ecology.MinimumWaterForTrees + ecology.WaterRequiredPerTree * self.trees().length;
+            self.weather.onTick(isRainDay, waterForPlants, self.getEvaporationAmount);
+
+            // terrain transitions
             if (self.terrainAge > 10) {
                 // terrain is old enough to transition
                 var neighborHasGrass = function (n) { return n && n.terrain().index == terrain.GRASS.index && n.terrainAge > 10 };
@@ -330,6 +251,7 @@ define(['knockout', 'ecologyConfiguration', 'terrain', 'compass', 'utility', 'tr
                     self.setTerrain(terrain.DIRT);
                 }
 
+                // additional trees
                 if (self.terrainAge % 20 == 0 && self.canSupportAdditionalTrees() && self.trees().length == 0) {
                     if (Math.random() * 1 < .1)
                         self.plantTree(self.name, 1, 1, 100);
@@ -337,10 +259,11 @@ define(['knockout', 'ecologyConfiguration', 'terrain', 'compass', 'utility', 'tr
 
             }
 
-            self.onGrowTrees();
+            // plant growth
+            self.onGrow(self.weather.waterForPlantConsumption);
         };
 
-        this.onGrowTrees = function () {
+        this.onGrow = function (waterForPlantConsumption) {
             if (self.hasEnoughRainfallForCurrentTrees()) {
                 // requires surplus water to grow existing trees
 
@@ -380,6 +303,12 @@ define(['knockout', 'ecologyConfiguration', 'terrain', 'compass', 'utility', 'tr
                 }
             }
         };
+
+        // toString
+        this.toString = ko.computed(function () {
+            return "[tile " + self.x + "," + self.y + " rain=" + this.weather.averageRainfall() + ", soilM=" + this.weather.soilMoisture() + " windDir=" + this.weather.windDirection().name + ", evap=" + self.getEvaporationAmount() + "]";
+        }, this);
+
     };
 
     return Tile;
