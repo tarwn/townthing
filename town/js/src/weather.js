@@ -9,15 +9,24 @@ define(['knockout', 'compass'],
         this.weatherSources = [];
         this.windDirection = ko.observable(compass.EAST);
 
+        this.rainSources = [];
         this.currentRainSource = 0;
         this.nextRainSource = 0;
+        this.isWater = ko.observable(0);
         this.soilMoisture = ko.observable(0);
         this.waterForPlantConsumption = 0;
         this.averageRainfall = ko.observable(0);
         this.lastMonth = [];
 
-        this.initialize = function (windDirection) {
+        this.initialize = function (windDirection, isWaterTile) {
             self.weatherSources = [];
+            if(isWaterTile != null)
+                self.isWater(isWaterTile);
+
+            if (self.isWater())
+                self.maximumSoilMoisture = 0;
+
+            self.rainSources[0] = 0;
         };
 
         this.addNeighboringWeather = function(directionOfNeighbor, weather) {
@@ -42,38 +51,54 @@ define(['knockout', 'compass'],
         //  using loam figures (1.5-2.5in rain to wet 12in of soil) and 3ft depth and assuming best case timing:
         //  6 inches of rain
         this.maximumSoilMoisture = 6;
+        // made this number up - need to research better into maximum evaporation valuues
         this.maximumEvaporationOnWetDay = 5;
 
-        this.onTick = function (isRainDay, maxPlantConsumption, terrainEvaporationOnDryDay) {
-            console.log("onTick(" + isRainDay + "," + maxPlantConsumption + "," + terrainEvaporationOnDryDay + ")");
+        this.onTick = function (time, isRainDay, maxPlantConsumption, evapotranspiration) {
+
+            var log = {
+                name: self.name,
+                isRainDay: isRainDay,
+                maxPlantConsumption: maxPlantConsumption,
+                evapotranspiration: evapotranspiration,
+                maximumEvaporationOnWetDay: self.maximumEvaporationOnWetDay,
+                startValues: {
+                    soilMoisture: self.soilMoisture(),
+                    averageRainfaal: self.averageRainfall(),
+                    currentRainSource: self.currentRainSource
+                },
+                finalValues: {}
+            };
 
             // clear current rain source, pull in new amounts
-            self.currentRainSource = self.getRainFromNeighbors();
-
-            console.log("onTick(" + isRainDay + "," + maxPlantConsumption + "," + terrainEvaporationOnDryDay + ") - currentrainSource=" + self.currentRainSource);
+            self.rainSources[time] = self.getRainFromNeighbors(time - 1);
 
             // always start wih available soil moisture
-            var availableWater = self.soilMoisture();
+            var availableWater = 0;
+            if (self.isWater())
+                availableWater = 10000;
+            else
+                availableWater = self.soilMoisture();
 
             // make it rain
             if (isRainDay) {
-                availableWater += self.currentRainSource;
-                self.currentRainSource = 0;
+                availableWater += self.rainSources[time] || 0;
+                self.rainSources[time] = 0
             }
 
-            console.log("onTick(" + isRainDay + "," + maxPlantConsumption + "," + terrainEvaporationOnDryDay + ") - after rain - availableWater=" + availableWater);
+            log.availableWaterAfterRain = availableWater;
 
             // calculate available plant consumption amount
             availableWater = self.updateWaterForPlantConsumption(availableWater, maxPlantConsumption);
 
-            console.log("onTick(" + isRainDay + "," + maxPlantConsumption + "," + terrainEvaporationOnDryDay + ") - after plant - availableWater=" + availableWater);
+            log.availableWaterAfterPlantConsumption = availableWater;
+            log.waterForPlantConsumption = self.waterForPlantConsumption;
 
-            // apply evaporation
-            var evaporationAmount = self.calculateEvaporation(availableWater, isRainDay, self.maximumEvaporationOnWetDay, terrainEvaporationOnDryDay);
-            self.currentRainSource += evaporationAmount;
-            availableWater -= evaporationAmount;
-            
-            console.log("onTick(" + isRainDay + "," + maxPlantConsumption + "," + terrainEvaporationOnDryDay + ") - after evap - availableWater=" + availableWater + ",evap=" + evaporationAmount);
+            // apply dry evaporation - doesn't affect water levels, this is transpiration from plants
+            self.rainSources[time] += evapotranspiration;
+
+            log.availableWaterAfterEvaporation = availableWater;
+            log.evaporationAmount = evaporationAmount;
 
             // calculate new soil moisture
             if (availableWater > self.maximumSoilMoisture) {
@@ -85,51 +110,66 @@ define(['knockout', 'compass'],
                 availableWater = 0;
             }
 
-            console.log("onTick(" + isRainDay + "," + maxPlantConsumption + "," + terrainEvaporationOnDryDay + ") - after soak - availableWater=" + availableWater);
+            log.availableWaterAfterInfiltration = availableWater;
+            log.finalValues.SoilMoisture = self.soilMoisture();
+
+            // apply wet evaporation
+            if (isRainDay) {
+                var evaporationAmount = self.calculateEvaporation(availableWater, self.maximumEvaporationOnWetDay);
+                self.rainSources[time] += evaporationAmount;
+                availableWater -= evaporationAmount;
+            }
+
+            log.finalValues.AvailableWater = availableWater;
 
             // extra water?
                       
 
-            // set tomorrows rain sources
-            self.nextRainSource = self.currentRainSource;
+            // set easy lookup value
+            self.currentRainSource = self.rainSources[time];
+            log.finalValues.RainSource = self.rainSources[time]
 
             // update average rainfall value
             self.updateAverageRainfall(isRainDay ? self.currentRainSource : 0);
+            log.finalValues.AverageRainfall = self.averageRainfall();;
+
+            //console.log(log);
 
             return availableWater;
         };
 
-        this.getRainFromNeighbors = function () {
+        this.getRainFromNeighbors = function (targetTime) {
             var rainAmount = 0;
+            //rainAmount += .1 * (self.rainSources[targetTime] || 0)
             for (var sourceIndex in self.weatherSources) {
-                console.log("getting rain for " + self.weatherSources[sourceIndex].direction.name + " from neighbor " + self.weatherSources[sourceIndex].source.currentRainSource + " " + self.weatherSources[sourceIndex].source.windDirection().name);
-                rainAmount += self.getRainSourcePercentage(self.weatherSources[sourceIndex].direction, self.weatherSources[sourceIndex].source)
+                //console.log("getting rain for " + self.weatherSources[sourceIndex].direction.name + " from neighbor " + self.weatherSources[sourceIndex].source.currentRainSource + " " + self.weatherSources[sourceIndex].source.windDirection().name);
+                rainAmount += self.getRainSourcePercentage(self.weatherSources[sourceIndex].direction, self.weatherSources[sourceIndex].source, targetTime)
             }
             return rainAmount;
         };
 
-        this.getRainSourcePercentage = function (sourceDirection, source) {
+        this.getRainSourcePercentage = function (sourceDirection, source, targetTime) {
             var diff = compass.compare(sourceDirection, source.windDirection());
             switch (diff) {
                 case 4: // direct wind
-                    return source.nextRainSource * Weather.RAINFACTOR.d180;
+                    return source.rainSources[targetTime] * Weather.RAINFACTOR.d180;
                 case 3: // 45 degrees off direct
                 case 5:
-                    return source.nextRainSource * Weather.RAINFACTOR.d135;
+                    return source.rainSources[targetTime] * Weather.RAINFACTOR.d135;
                 case 2: // 90 degrees off direct
                 case 6:
-                    return source.nextRainSource * Weather.RAINFACTOR.d90;
+                    return source.rainSources[targetTime] * Weather.RAINFACTOR.d90;
                 case 1: // 135 degrees off direct
                 case 7:
-                    return source.nextRainSource * Weather.RAINFACTOR.d45;
+                    return source.rainSources[targetTime] * Weather.RAINFACTOR.d45;
                 case 0: // opposed wind
-                    return source.nextRainSource * Weather.RAINFACTOR.d0;
+                    return source.rainSources[targetTime] * Weather.RAINFACTOR.d0;
                 default:
                     return 0;
             }
         };
 
-        this.updateWaterForPlantConsumption = function (availableWater, maxPlantConsumption) {
+        this.updateWaterForPlantConsumption =   function (availableWater, maxPlantConsumption) {
             if (maxPlantConsumption > availableWater) {
                 self.waterForPlantConsumption = availableWater;
                 return 0;
@@ -158,18 +198,16 @@ define(['knockout', 'compass'],
         d0:      .00,
         d45:     .00,
         d90:     .05,
-        d135:    .15,
-        d180:    .60,
-        d225:    .15,
+        d135:    .05,
+        d180:    .80,
+        d225:    .05,
         d270:    .05,
         d315:    .00
     };
     
-    Weather.prototype.calculateEvaporation = function (availableWater, isRainyDay, maxEvaporationOnRainyDay, maxEvaporationOnDryDay) {
-        var maxEvaporation = isRainyDay ? maxEvaporationOnRainyDay : maxEvaporationOnDryDay;
-
-        if (availableWater > maxEvaporation)
-            return maxEvaporation;
+    Weather.prototype.calculateEvaporation = function (availableWater, maxEvaporationOnRainyDay) {
+        if (availableWater > maxEvaporationOnRainyDay)
+            return maxEvaporationOnRainyDay;
         else 
             return availableWater;
     };

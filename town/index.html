@@ -2,7 +2,7 @@
 <head>
     <title>townthing</title>
     <link href="styles/town.css" rel="stylesheet" />
-    <script src="js/lib/require.js"></script>
+    <script src="js/lib/require-2.1.9.js"></script>
 </head>
 <body>
 <div style="width: 200px; float: left;">
@@ -80,7 +80,7 @@
                     new Tile(0, 0, 0, 0, [terrain.WATER]),
                     new Tile(1, 0, 0, 0, [terrain.WATER]),
                     new Tile(2, 0, 0, 0, [terrain.WATER]),
-                    new Tile(3, 0, 0, 0, [terrain.GRASS]),
+                    new Tile(3, 0, 0, 0, [terrain.DIRT]),
                     new Tile(4, 0, 0, 0, [terrain.DIRT]),
                     new Tile(5, 0, 0, 0, [terrain.DIRT]),
                     new Tile(6, 0, 0, 0, [terrain.DIRT]),
@@ -90,14 +90,24 @@
                     new Tile(10, 0, 0, 0, [terrain.DIRT])
                 ]
             ];
-            viewmodel.tiles[0][3].plantTree("global", 1, 1, 100);
             viewmodel.globalWindDirection(compass.EAST);
+            // -- end small map
+
+            //-- Smallest map for testing
+            //viewmodel = new TownViewModel(2, 1);
+            //viewmodel.tiles = [
+            //    [
+            //        new Tile(0, 0, 0, 0, [terrain.WATER]),
+            //        new Tile(1, 0, 0, 0, [terrain.DIRT]),
+            //    ]
+            //];
+            //viewmodel.globalWindDirection(compass.EAST);
             // -- end small map
 
             ko.applyBindings(viewmodel);
             viewmodel.initialize();
 
-            viewmodel.flipSpeed();  //start running instead of paused
+            //viewmodel.flipSpeed();  //start running instead of paused
     });
 </script>
 </body>

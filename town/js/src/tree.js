@@ -28,7 +28,7 @@ define(['knockout', 'configuration'],
             return self.name;
         }, this);
 
-        this.onTick = function (onReadyToSeed) {
+        this.onTick = function (waterAmount, onReadyToSeed) {
             self.updateTreeType(Tree.Type.HEALTHY);
             this.tickWithoutSufficientWater = 0;
             this.ticks++;

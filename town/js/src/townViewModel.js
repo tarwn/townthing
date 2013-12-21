@@ -38,7 +38,7 @@ define(['knockout', 'configuration', 'terrain', 'compass', 'tile'],
             self.mapAge(self.mapAge() + 1);
 
             forEachTile(function (tile, x, y) {
-                tile.onTick();
+                tile.onTick(self.mapAge());
             });
         }
 
@@ -132,6 +132,11 @@ define(['knockout', 'configuration', 'terrain', 'compass', 'tile'],
         this.initialize = function () {
             self.setState("initializing", "Initializing map...");
 
+            // generate global starting values
+            if (!self.globalWindDirection()) {
+                self.generateWindDirection();
+            }
+
             // generate tiles
             if (!self.tiles) {
                 self.setState("initializing", "Generating tiles...");
@@ -150,19 +155,10 @@ define(['knockout', 'configuration', 'terrain', 'compass', 'tile'],
                 if (y < self.height - 1)
                     tile.neighborSouth = self.tiles[y + 1][x];
 
-                tile.initialize();
+                tile.initialize(self.globalWindDirection());
             });
 
             self.mapReadyForDisplay(true);
-
-            self.setState("initializing", "Producing weather...");
-            // assign wind direction - currently global
-            if (!self.globalWindDirection()) {
-                self.generateWindDirection();
-            }
-            else {
-                self.applyWindGlobally();
-            }
 
             self.setState("initializing", "Aging the map...");
 

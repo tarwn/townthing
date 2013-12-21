@@ -23,7 +23,7 @@ define(['knockout', 'ecologyConfiguration', 'terrain', 'compass', 'utility', 'tr
         this.setTerrain = function (terrain) {
             self.terrainAge = 0;
             self.terrain(terrain);
-            self.terrainVariantNumber(Math.floor(Math.random() * terrain.variants));
+            self.terrainVariantNumber(Math.floor(Math.random() * terrain.variants || 0));
         };
 
         this.setTerrain(availableTerrain[Math.round(this.terrainValue)]);
@@ -40,8 +40,8 @@ define(['knockout', 'ecologyConfiguration', 'terrain', 'compass', 'utility', 'tr
         // trees are a specific set of references for display purposes - each on takes one subtile
         this.trees = ko.observableArray([]); //
 
-        this.initialize = function () {
-            self.weather.initialize();
+        this.initialize = function (windDirection) {
+            self.weather.initialize(windDirection, self.terrain().isWater);
             if (self.neighborNorth)
                 self.weather.addNeighboringWeather(compass.NORTH, self.neighborNorth.weather);
             if (self.neighborEast)
@@ -71,6 +71,11 @@ define(['knockout', 'ecologyConfiguration', 'terrain', 'compass', 'utility', 'tr
         this.getEvaporationAmount = function () {
             return (self.terrain().evaporation || 0)
                 + self.trees().length * Tree.evaporation;
+        };
+
+        this.getPlantConsumptionAmount = function () {
+            return (self.terrain().waterRequired || 0)
+                + self.trees().length * ecology.WaterRequiredPerTree;
         };
 
         this.plantTree = function (sourceName, x, y, size) {
@@ -119,28 +124,21 @@ define(['knockout', 'ecologyConfiguration', 'terrain', 'compass', 'utility', 'tr
         };
 
         this.canSupportGrass = function () {
+            //return self.weather.soilMoisture() >= ecology.MinimumWaterForGrass;
             return self.weather.averageRainfall() >= ecology.MinimumWaterForGrass;
         };
 
         this.canSupportDryGrass = function () {
+//            return self.weather.soilMoisture() >= ecology.MinimumWaterForDryGrass;
             return self.weather.averageRainfall() >= ecology.MinimumWaterForDryGrass;
         };
 
         this.canSupportAdditionalTrees = function () {
-            return (self.terrain().supportsTrees || false)
-                && self.weather.averageRainfall() >= ecology.MinimumWaterForTrees
-                && self.weather.averageRainfall() <= ecology.MaximumWaterForTrees
-                && self.weather.averageRainfall() >= ecology.MinimumWaterForTrees + ecology.WaterRequiredPerTree * (self.trees().length + 1);
-        };
+            var currentPlantRequirements = self.getPlantConsumptionAmount();
 
-        this.hasEnoughRainfallForCurrentTrees = function () {
             return (self.terrain().supportsTrees || false)
-                && self.weather.averageRainfall() >= ecology.MinimumWaterForTrees
-                && self.weather.averageRainfall() >= ecology.MinimumWaterForTrees + ecology.WaterRequiredPerTree * self.trees().length;
-        };
-
-        this.hasTooMuchRainfallForTrees = function () {
-            return self.weather.averageRainfall() > ecology.MinimumWaterForTrees;
+                && self.weather.soilMoisture() > 0
+                && self.weather.averageRainfall() >= currentPlantRequirements + ecology.WaterRequiredPerTree;
         };
 
         this.canSupportTreeIn = function (subtileX, subtileY) {
@@ -209,13 +207,16 @@ define(['knockout', 'ecologyConfiguration', 'terrain', 'compass', 'utility', 'tr
             return true;
         };
 
-        this.onTick = function () {
+        this.onTick = function (time) {
             self.terrainAge++;
 
             // weather
             var isRainDay = self.terrainAge % 3 == 0;
-            var waterForPlants = ecology.MinimumWaterForTrees + ecology.WaterRequiredPerTree * self.trees().length;
-            self.weather.onTick(isRainDay, waterForPlants, self.getEvaporationAmount);
+            var waterForPlants = (self.terrain().waterRequired || 0) + ecology.WaterRequiredPerTree * self.trees().length;
+            var overflow = self.weather.onTick(time, isRainDay, waterForPlants, self.getEvaporationAmount());
+
+            if(self.x == 5)
+                console.log("Weather Update: (" + (isRainDay ? "Raining" : "Clear") + ") " + self.toString());
 
             // terrain transitions
             if (self.terrainAge > 10) {
@@ -264,15 +265,18 @@ define(['knockout', 'ecologyConfiguration', 'terrain', 'compass', 'utility', 'tr
         };
 
         this.onGrow = function (waterForPlantConsumption) {
-            if (self.hasEnoughRainfallForCurrentTrees()) {
-                // requires surplus water to grow existing trees
+            var waterRemaining = waterForPlantConsumption;
 
-                for (var subtileIndex in self.subtiles) {
-                    if (!self.subtiles[subtileIndex] || !(self.subtiles[subtileIndex] instanceof Tree))
-                        continue;
+            waterRemaining = waterRemaining - self.terrain().waterRequired;
+            if (waterRemaining < 0)
+                waterRemaining = 0;
 
-                    var tree = self.subtiles[subtileIndex];
-                    tree.onTick(function () {
+            var waterPerTree = waterRemaining / self.trees().length;
+            for (var treeIndex in self.trees()) {
+                self.trees()[treeIndex].onTick(waterPerTree,
+                    /* onReadyToSeed */
+                    function () {
+                        var tree = self.trees()[treeIndex];
                         // grab preshuffled arrays so growth will look somewhat chaotic
                         var scanX = utility.shuffledArrays[self.x % 5];
                         var scanY = utility.shuffledArrays[self.y % 5];
@@ -287,26 +291,19 @@ define(['knockout', 'ecologyConfiguration', 'terrain', 'compass', 'utility', 'tr
                                 }
                             }
                         }
-                    });
-                }
-            }
-            else if (self.trees().length > 0) {
-                for (var subtileIndex in self.subtiles) {
-                    if (!self.subtiles[subtileIndex] || !(self.subtiles[subtileIndex] instanceof Tree))
-                        continue;
-
-                    var tree = self.subtiles[subtileIndex];
-                    tree.onDrought(function () {
+                    },
+                    /* onTreeDied */
+                    function () {
+                        var tree = self.trees()[treeIndex];
                         //console.log(tree.name + " has died from drought");
                         self.removeTree(tree);
                     });
-                }
             }
         };
 
         // toString
         this.toString = ko.computed(function () {
-            return "[tile " + self.x + "," + self.y + " rain=" + this.weather.averageRainfall() + ", soilM=" + this.weather.soilMoisture() + " windDir=" + this.weather.windDirection().name + ", evap=" + self.getEvaporationAmount() + "]";
+            return "[tile " + self.x + "," + self.y + " " + self.terrain().class + " AvgRain=" + this.weather.averageRainfall() + ", SoilM=" + this.weather.soilMoisture() + ", WindDir=" + this.weather.windDirection().name + ", BaseEvap=" + self.getEvaporationAmount() + ", RainSource=" + self.weather.currentRainSource + ", plantConsumption=" + self.weather.waterForPlantConsumption + "]";
         }, this);
 
     };

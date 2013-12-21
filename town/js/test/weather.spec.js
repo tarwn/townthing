@@ -42,7 +42,7 @@ describe("weather", function () {
         it("should calculate 0 rain if here are no neighbors", function () {
             var weather = new Weather('unit-test');
 
-            var result = weather.getRainFromNeighbors();
+            var result = weather.getRainFromNeighbors(0);
 
             expect(result).toEqual(0);
         });
@@ -50,11 +50,11 @@ describe("weather", function () {
         it("should calculate positive rain if there is a neighbor with wind blowing towards", function () {
             var weather = new Weather('unit-test');
             var neighbor = new Weather('unit-test-neighbor');
-            neighbor.nextRainSource = 10;
+            neighbor.rainSources[0] = 10;
             neighbor.windDirection(compass.NORTH);
             weather.addNeighboringWeather(compass.SOUTH, neighbor);
 
-            var result = weather.getRainFromNeighbors();
+            var result = weather.getRainFromNeighbors(0);
 
             expect(result).toBeGreaterThan(0);
         });
@@ -62,15 +62,15 @@ describe("weather", function () {
         it("should calculate positive rain if there is a neighbor with wind blowing towards and a neighbor blowing away", function () {
             var weather = new Weather('unit-test');
             var neighbor = new Weather('unit-test-neighbor');
-            neighbor.nextRainSource = 10;
+            neighbor.rainSources[0] = 10;
             neighbor.windDirection(compass.NORTH);
-            weather.addNeighboringWeather(compass.SOUTH, neighbor);
+            weather.addNeighboringWeather(compass.SOUTH, neighbor, 0);
             var neighbor2 = new Weather('unit-test-neighbor');
-            neighbor2.nextRainSource = 10;
+            neighbor2.rainSources[0] = 10;
             neighbor2.windDirection(compass.NORTH);
             weather.addNeighboringWeather(compass.NORTH, neighbor2);
 
-            var result = weather.getRainFromNeighbors();
+            var result = weather.getRainFromNeighbors(0);
 
             expect(result).toBeGreaterThan(0);
         });
@@ -82,10 +82,10 @@ describe("weather", function () {
         it("should calculate 0 rain for neighbor with available rain source and wind blowing directly away", function () {
             var weather = new Weather('unit-test');
             var neighbor = new Weather('unit-test-neighbor');
-            neighbor.nextRainSource = 10;
+            neighbor.rainSources[0] = 10;
             neighbor.windDirection(compass.NORTH);
 
-            var result = weather.getRainSourcePercentage(compass.NORTH, neighbor);
+            var result = weather.getRainSourcePercentage(compass.NORTH, neighbor, 0);
 
             expect(result).toEqual(0);
         });
@@ -93,10 +93,10 @@ describe("weather", function () {
         it("should calculate positive rain for neighbor with available rain source and wind blowing directly towards N-S", function () {
             var weather = new Weather('unit-test');
             var neighbor = new Weather('unit-test-neighbor');
-            neighbor.nextRainSource = 10;
+            neighbor.rainSources[0] = 10;
             neighbor.windDirection(compass.SOUTH);
 
-            var result = weather.getRainSourcePercentage(compass.NORTH, neighbor);
+            var result = weather.getRainSourcePercentage(compass.NORTH, neighbor, 0);
 
             expect(result).toEqual(10 * Weather.RAINFACTOR.d180);
         });
@@ -104,10 +104,10 @@ describe("weather", function () {
         it("should calculate positive rain for neighbor with available rain source and wind blowing directly towards E-W", function () {
             var weather = new Weather('unit-test');
             var neighbor = new Weather('unit-test-neighbor');
-            neighbor.nextRainSource = 10;
+            neighbor.rainSources[0] = 10;
             neighbor.windDirection(compass.WEST);
 
-            var result = weather.getRainSourcePercentage(compass.EAST, neighbor);
+            var result = weather.getRainSourcePercentage(compass.EAST, neighbor, 0);
 
             expect(result).toEqual(10 * Weather.RAINFACTOR.d180);
         });
@@ -115,10 +115,10 @@ describe("weather", function () {
         it("should calculate positive rain for neighbor with available rain source and and wind blowing diagonally towards", function () {
             var weather = new Weather('unit-test');
             var neighbor = new Weather('unit-test-neighbor');
-            neighbor.nextRainSource = 10;
+            neighbor.rainSources[0] = 10;
             neighbor.windDirection(compass.SOUTH);
 
-            var result = weather.getRainSourcePercentage(compass.NORTHEAST, neighbor);
+            var result = weather.getRainSourcePercentage(compass.NORTHEAST, neighbor, 0);
 
             expect(result).toEqual(10 * Weather.RAINFACTOR.d135);
         });
@@ -126,10 +126,10 @@ describe("weather", function () {
         it("should calculate positive rain for neighbor with available rain source and and wind blowing directly perpendicularly", function () {
             var weather = new Weather('unit-test');
             var neighbor = new Weather('unit-test-neighbor');
-            neighbor.nextRainSource = 10;
+            neighbor.rainSources[0] = 10;
             neighbor.windDirection(compass.SOUTH);
 
-            var result = weather.getRainSourcePercentage(compass.EAST, neighbor);
+            var result = weather.getRainSourcePercentage(compass.EAST, neighbor, 0);
 
             expect(result).toEqual(10 * Weather.RAINFACTOR.d90);
         });
@@ -137,10 +137,10 @@ describe("weather", function () {
         it("should calculate 0 rain for neighbor with empty rain source and and wind blowing directly towards", function () {
             var weather = new Weather('unit-test');
             var neighbor = new Weather('unit-test-neighbor');
-            neighbor.nextRainSource = 0;
+            neighbor.rainSources[0] = 0;
             neighbor.windDirection(compass.SOUTH);
 
-            var result = weather.getRainSourcePercentage(compass.NORTH, neighbor);
+            var result = weather.getRainSourcePercentage(compass.NORTH, neighbor, 0);
 
             expect(result).toEqual(0);
         });
@@ -148,10 +148,10 @@ describe("weather", function () {
         it("should calculate 0 rain for neighbor with available rain source and and wind blowing diagonally away", function () {
             var weather = new Weather('unit-test');
             var neighbor = new Weather('unit-test-neighbor');
-            neighbor.nextRainSource = 10;
+            neighbor.rainSources[0] = 10;
             neighbor.windDirection(compass.SOUTH);
 
-            var result = weather.getRainSourcePercentage(compass.SOUTHEAST, neighbor);
+            var result = weather.getRainSourcePercentage(compass.SOUTHEAST, neighbor, 0);
 
             expect(result).toEqual(0);
         });
@@ -236,8 +236,9 @@ describe("weather", function () {
             var neighbor = new Weather('unit-test-neighbor');
             neighbor.windDirection(compass.EAST);
             neighbor.currentRainSource = amountOfRain / Weather.RAINFACTOR.d180;
-            neighbor.nextRainSource = neighbor.currentRainSource;
-            weather.addNeighboringWeather(compass.WEST, neighbor);
+            neighbor.rainSources[1] = neighbor.currentRainSource;
+            neighbor.rainSources[0] = neighbor.currentRainSource;
+            weather.addNeighboringWeather(compass.WEST, neighbor, 0);
             return weather;
         }
 
@@ -247,23 +248,25 @@ describe("weather", function () {
             var weather = getWeatherWithRainSource(startingPotentialRain);
             weather.soilMoisture(startingSoilMoisture);
             
-            var remainingAmount = weather.onTick(false, 0, 0);  // no consumption or evaporation
+            var remainingAmount = weather.onTick(1, false, 0, 0);  // no consumption or evaporation
 
             expect(remainingAmount).toEqual(0);
             expect(weather.soilMoisture()).toEqual(startingSoilMoisture);
         });
 
-        it("should lose soil moisture to evaporation if there is no rain or consumption", function () {
+        it("should have evapotranspiration that is added to the rain source without reducing soilMoisture", function () {
             var startingPotentialRain = 5;
             var startingSoilMoisture = 4;
             var expectedEvaporation = 2;
             var weather = getWeatherWithRainSource(startingPotentialRain);
             weather.soilMoisture(startingSoilMoisture);
+            weather.rainSources[0] = 0;
 
-            var remainingAmount = weather.onTick(false, 0, expectedEvaporation);
+            var remainingAmount = weather.onTick(1, false, 0, expectedEvaporation);
 
             expect(remainingAmount).toEqual(0);
-            expect(weather.soilMoisture()).toEqual(startingSoilMoisture - expectedEvaporation);
+            expect(weather.soilMoisture()).toEqual(startingSoilMoisture);
+            expect(weather.currentRainSource).toEqual(startingPotentialRain + expectedEvaporation);
         });
 
         it("should add evaporated water to the current rain source", function () {
@@ -273,11 +276,39 @@ describe("weather", function () {
             var weather = getWeatherWithRainSource(startingPotentialRain);
             weather.soilMoisture(startingSoilMoisture);
 
-            var remainingAmount = weather.onTick(false, 0, expectedEvaporation);
+            var remainingAmount = weather.onTick(1, false, 0, expectedEvaporation);
 
             expect(remainingAmount).toEqual(0);
             expect(weather.currentRainSource).toEqual(startingPotentialRain + expectedEvaporation);
         });
+
+        // - these two tests are for the infiltration before evaporation order
+        //it("should not lose soil moisture to evaporation even if there is no rain or consumption", function () {
+        //    var startingPotentialRain = 5;
+        //    var startingSoilMoisture = 4;
+        //    var expectedEvaporation = 2;
+        //    var weather = getWeatherWithRainSource(startingPotentialRain);
+        //    weather.soilMoisture(startingSoilMoisture);
+
+        //    var remainingAmount = weather.onTick(false, 0, expectedEvaporation);
+
+        //    expect(remainingAmount).toEqual(0);
+        //    expect(weather.soilMoisture()).toEqual(startingSoilMoisture);
+        //});
+
+        // - this method means we are only getting evaporation on rain days
+        //it("should add evaporated water to the current rain source", function () {
+        //    var startingPotentialRain = 5;
+        //    var startingSoilMoisture = 4;
+        //    var expectedEvaporation = 2;
+        //    var weather = getWeatherWithRainSource(startingPotentialRain);
+        //    weather.soilMoisture(startingSoilMoisture);
+
+        //    var remainingAmount = weather.onTick(false, 0, expectedEvaporation);
+
+        //    expect(remainingAmount).toEqual(0);
+        //    expect(weather.currentRainSource).toEqual(startingPotentialRain + expectedEvaporation);
+        //});
 
         it("should provide enough water for plant consumption if there is enough soil moisture and no rain or evaporation", function () {
             var startingPotentialRain = 5;
@@ -286,10 +317,10 @@ describe("weather", function () {
             var weather = getWeatherWithRainSource(startingPotentialRain);
             weather.soilMoisture(startingSoilMoisture);
 
-            var remainingAmount = weather.onTick(false, expectedPlantConsumption, 0);
+            var remainingAmount = weather.onTick(1, false, expectedPlantConsumption, 0);
 
             expect(remainingAmount).toEqual(0);
-            expect(waterForPlantConsumption).toEqual(expectedPlantConsumption);
+            expect(weather.waterForPlantConsumption).toEqual(expectedPlantConsumption);
         });
 
         it("should have less soil moisture left after providing water for plants if there is no rain or evaporation", function () {
@@ -299,10 +330,104 @@ describe("weather", function () {
             var weather = getWeatherWithRainSource(startingPotentialRain);
             weather.soilMoisture(startingSoilMoisture);
 
-            var remainingAmount = weather.onTick(false, expectedPlantConsumption, 0);
+            var remainingAmount = weather.onTick(1, false, expectedPlantConsumption, 0);
 
             expect(remainingAmount).toEqual(0);
             expect(weather.soilMoisture()).toEqual(startingSoilMoisture - expectedPlantConsumption);
+        });
+
+        it("should use the rain source on rainy days and overflow if there is no consumption, evaporation, or infiltration", function () {
+            var startingPotentialRain = 5;
+            var startingSoilMoisture = 0;
+            var weather = getWeatherWithRainSource(startingPotentialRain);
+            weather.maximumSoilMoisture = 0;
+            weather.maximumEvaporationOnWetDay = 0;
+            weather.soilMoisture(startingSoilMoisture);
+
+            var remainingAmount = weather.onTick(1, true, 0, 0);  // no consumption or evaporation
+
+            expect(remainingAmount).toEqual(5);
+            expect(weather.currentRainSource).toEqual(0);
+        });
+
+        it("should use combined rain and soil moisture to water plants", function () {
+            var startingPotentialRain = 2;
+            var startingSoilMoisture = 2;
+            var expectedPlantConsumption = 4;
+            var weather = getWeatherWithRainSource(startingPotentialRain);
+            weather.soilMoisture(startingSoilMoisture);
+
+            var remainingAmount = weather.onTick(1, true, expectedPlantConsumption, 0);  // no consumption or evaporation
+
+            expect(remainingAmount).toEqual(0);
+            expect(weather.waterForPlantConsumption).toEqual(expectedPlantConsumption);
+        });
+
+        it("should increase soil moisture on rainy day from infiltration if not full and no evaporation or consumption", function () {
+            var startingPotentialRain = 2;
+            var startingSoilMoisture = 2;
+            var weather = getWeatherWithRainSource(startingPotentialRain);
+            weather.soilMoisture(startingSoilMoisture);
+            weather.maximumEvaporationOnWetDay = 0;
+
+            var remainingAmount = weather.onTick(1, true, 0, 0);  // no consumption or evaporation
+
+            expect(remainingAmount).toEqual(0);
+            expect(weather.soilMoisture()).toEqual(startingSoilMoisture + startingPotentialRain);
+        });
+
+        it("should provide enough water for plant consumption when it rains and doesn't have starting soil moisture", function () {
+            var startingPotentialRain = 4;
+            var startingSoilMoisture = 0;
+            var expectedPlantConsumption = 4;
+            var weather = getWeatherWithRainSource(startingPotentialRain);
+            weather.soilMoisture(startingSoilMoisture);
+
+            var remainingAmount = weather.onTick(1, true, expectedPlantConsumption, 0);  // no evaporation
+
+            expect(remainingAmount).toEqual(0);
+            expect(weather.waterForPlantConsumption).toEqual(expectedPlantConsumption);
+        });
+
+        it("should have no evaporation on a rainy day if plants consume it all", function () {
+            var startingPotentialRain = 4;
+            var startingSoilMoisture = 0;
+            var expectedPlantConsumption = 4;
+            var weather = getWeatherWithRainSource(startingPotentialRain);
+            weather.soilMoisture(startingSoilMoisture);
+
+            var remainingAmount = weather.onTick(1, true, expectedPlantConsumption, 0);  // no evaporation
+
+            expect(remainingAmount).toEqual(0);
+            expect(weather.currentRainSource).toEqual(0);
+        });
+
+        it("should produce new potential rain on a rainy day due to evaporation", function () {
+            var startingPotentialRain = 10;
+            var startingSoilMoisture = 5;
+            var weather = getWeatherWithRainSource(startingPotentialRain);
+            weather.soilMoisture(startingSoilMoisture);
+            weather.maximumSoilMoisture = startingSoilMoisture;
+            weather.maximumEvaporationOnWetDay = 10;
+
+            var remainingAmount = weather.onTick(1, true, 0, 0);  // no plant consumption, dry day evaporation doesn't matter
+
+            expect(remainingAmount).toEqual(0);
+            expect(weather.currentRainSource).toEqual(10);
+        });
+
+        it("should start with a huge amount of water if it is a water tile", function () {
+            var startingPotentialRain = 10;
+            var startingSoilMoisture = 5;
+            var weather = getWeatherWithRainSource(startingPotentialRain, true);
+            weather.soilMoisture(startingSoilMoisture);
+            weather.maximumSoilMoisture = startingSoilMoisture;
+            weather.maximumEvaporationOnWetDay = 10;
+
+            var remainingAmount = weather.onTick(1, true, 0, 0);  // no plant consumption, dry day evaporation doesn't matter
+
+            expect(remainingAmount).toEqual(0);
+            expect(weather.currentRainSource).toEqual(10);
         });
 
     });
