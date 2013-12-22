@@ -2,7 +2,7 @@
 
 define(function () {
 
-    return {
+    var config = {
         INITIALTICK: 200,
         TICKTIME: 100,
         TREEGROWINTERVAL: 10,
@@ -18,5 +18,19 @@ define(function () {
             -   make trees accurate-ish and tiles ~50ft (quarter acre)
         */
     };
+
+    config.getMonthsFromTicks = function (ticks) {
+        return ticks / 30;
+    };
+
+    config.getTicksFromMonths = function (months) {
+        return months * 30;
+    };
+
+    config.getTicksFromDays = function (days) {
+        return days;
+    };
+
+    return config;
 
 });

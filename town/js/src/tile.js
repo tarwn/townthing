@@ -254,17 +254,18 @@ define(['knockout', 'ecologyConfiguration', 'terrain', 'compass', 'utility', 'tr
 
                 // additional trees
                 if (self.terrainAge % 20 == 0 && self.canSupportAdditionalTrees() && self.trees().length == 0) {
-                    if (Math.random() * 1 < .1)
-                        self.plantTree(self.name, 1, 1, 100);
+                    if (Math.random() * 1 < .1) {
+                        self.plantTree(self.name, 1, 1, 10);
+                    }
                 }
 
             }
 
             // plant growth
-            self.onGrow(self.weather.waterForPlantConsumption);
+            self.onGrow(time, self.weather.waterForPlantConsumption);
         };
 
-        this.onGrow = function (waterForPlantConsumption) {
+        this.onGrow = function (time, waterForPlantConsumption) {
             var waterRemaining = waterForPlantConsumption;
 
             waterRemaining = waterRemaining - self.terrain().waterRequired;
@@ -273,7 +274,7 @@ define(['knockout', 'ecologyConfiguration', 'terrain', 'compass', 'utility', 'tr
 
             var waterPerTree = waterRemaining / self.trees().length;
             for (var treeIndex in self.trees()) {
-                self.trees()[treeIndex].onTick(waterPerTree,
+                self.trees()[treeIndex].onTick(time, waterPerTree,
                     /* onReadyToSeed */
                     function () {
                         var tree = self.trees()[treeIndex];

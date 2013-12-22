@@ -1,6 +1,6 @@
 ﻿
-define(['knockout', 'configuration'],
-    function (ko, config) {
+define(['knockout', 'configuration', 'ecologyConfiguration'],
+    function (ko, config, ecology) {
 
     function Tree(parentName, x, y, size) {
         var self = this;
@@ -8,8 +8,13 @@ define(['knockout', 'configuration'],
         this.y = y;
         this.name = "[tree " + x + "," + y + " in " + parentName + "]";
         this.size = ko.observable(size);
-        this.ticks = Math.random() * config.TREESEEDTICKS;
-        this.tickWithoutSufficientWater = 0;
+        
+        this.ticksSinceLastGrowth = 0;
+        this.lastSufficientWater = 0;
+        this.lastAnyWater = 0;
+        this.lastTime = 0;
+        this.regrowth = 0;
+        this.chanceToSeed = .1;
 
         this.terrainClassVariant = ko.observable('');
         this.terrainTreeType = null;
@@ -22,53 +27,73 @@ define(['knockout', 'configuration'],
                 self.terrainClassVariant(treeType.class + '-' + variant);
             }
         };
+        this.updateTreeType(Tree.Type.HEALTHY);
 
-        // toString
-        this.toString = ko.computed(function () {
-            return self.name;
-        }, this);
+        this.getAmountOfWaterNeeded = function () {
+            return ecology.WaterRequiredPerTree;
+        };
 
-        this.onTick = function (waterAmount, onReadyToSeed) {
-            self.updateTreeType(Tree.Type.HEALTHY);
-            this.tickWithoutSufficientWater = 0;
-            this.ticks++;
-            if (self.size() < 100 && this.ticks >= config.TREEGROWTICKS) {
-                self.size(self.size() + config.TREEGROWINTERVAL);
-                this.ticks = 0;
-            }
-            else {
-                if (self.ticks >= config.TREESEEDTICKS) {
-                    var spread = onReadyToSeed();
+        this.onTick = function (time, waterAmount, onReadyToSeed, onTreeDied) {
+            self.lastTime = 0;
+            if (self.terrainTreeType == Tree.Type.HEALTHY) {
+                if (waterAmount >= self.getAmountOfWaterNeeded()) {
+                    self.lastSufficientWater = time;
+                    self.lastAnyWater = time;
+                    self.ticksSinceLastGrowth++;
 
-                    // growth slows down due to not being able to spread on last try
-                    if (!spread)
-                        self.ticks = -1 * config.TREESEEDTICKS;
-                    else
-                        self.ticks = 0;
+                    if (self.ticksSinceLastGrowth >= config.TREEGROWTICKS && self.size() < 100) {
+                        self.size(self.size() + config.TREEGROWINTERVAL);
+                        self.ticksSinceLastGrowth = 0;
+                    }
+
+                    if (self.size() > 50 && Math.random() < self.chanceToSeed) {
+                        onReadyToSeed();
+                    }
+                }
+                else if (waterAmount > 0) {
+                    self.lastAnyWater = time;
+                    if (time - self.lastSufficientWater >= Tree.DaysOnLimitedWaterBeforeDry) {
+                        self.updateTreeType(Tree.Type.DRY);
+                    }
+                }
+                else {
+                    if (time - self.lastAnyWater >= Tree.DaysOnNoWaterBeforeDry) {
+                        self.updateTreeType(Tree.Type.DRY);
+                    }
                 }
             }
-        };
+            else if (self.terrainTreeType == Tree.Type.DRY) {
+                if (waterAmount >= self.getAmountOfWaterNeeded()) {
+                    self.lastSufficientWater = time;
+                    self.lastAnyWater = time;
+                    self.regrowth++;
 
-        this.onDrought = function (onTreeDied) {
-            this.tickWithoutSufficientWater++;
-
-            if (this.tickWithoutSufficientWater > 40) {
-                // dead
-                //console.log(self.name + " is suffering from drought");
-                onTreeDied();
+                    if (self.regrowth >= Tree.DaysOnWaterBeforeHealthy) {
+                        self.updateTreeType(Tree.Type.HEALTHY);
+                        self.ticksSinceLastGrowth = 0;
+                    }
+                }
+                else if (time - self.lastSufficientWater >= Tree.DaysOnLimitedWaterBeforeDead) {
+                    self.updateTreeType(Tree.Type.DEAD);
+                    onTreeDied();
+                }
             }
-            else if (this.tickWithoutSufficientWater > 20) {
-                // dying
-                self.updateTreeType(Tree.Type.DEAD);
-            }
-            else if (this.tickWithoutSufficientWater > 5) {
-                // drying out
-                self.updateTreeType(Tree.Type.DRY);
+            else {
+                // it's dead, what is it supposed to do?
             }
         };
+        
+        // toString
+        this.toString = ko.computed(function () {
+            return self.name + " type=" + self.terrainTreeType.class + ", ticksSincelastgrowth=" + self.ticksSinceLastGrowth + " timeSinceSufficientWater=" + (self.lastTime - self.lastSufficientWater) + " timeSinceNoWater=" + (self.lastTime - self.lastAnyWater);
+        }, this);
     };
 
     Tree.evaporation = .5;
+    Tree.DaysOnLimitedWaterBeforeDry = 15;
+    Tree.DaysOnNoWaterBeforeDry = 10;
+    Tree.DaysOnWaterBeforeHealthy = 10;
+    Tree.DaysOnLimitedWaterBeforeDead = 45;
 
     Tree.Type = {
         HEALTHY: { index: 0, variants: 4, class: 'terrain-tree' },
