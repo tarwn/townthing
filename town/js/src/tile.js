@@ -269,6 +269,7 @@ define(['knockout', 'ecologyConfiguration', 'terrain', 'compass', 'utility', 'tr
             var waterRemaining = waterForPlantConsumption;
 
             waterRemaining = waterRemaining - self.terrain().waterRequired;
+            console.log("started with " + waterForPlantConsumption + " now have " + waterRemaining);
             if (waterRemaining < 0)
                 waterRemaining = 0;
 

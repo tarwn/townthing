@@ -216,9 +216,9 @@ describe("tile", function () {
             spyOn(tree, 'onTick');
             tile.trees.push(tree);
 
-            var result = tile.onGrow(1.23 + ecology.WaterRequiredPerTree);
+            var result = tile.onGrow(1, 1.23 + ecology.WaterRequiredPerTree);
 
-            expect(tree.onTick.calls.first().args[0]).toEqual(ecology.WaterRequiredPerTree);
+            expect(tree.onTick.calls.first().args[1]).toEqual(ecology.WaterRequiredPerTree);
         });
 
         it("should evenly split remainder of water if there is not enough left after watering the terrain", function () {
@@ -229,9 +229,9 @@ describe("tile", function () {
             tile.trees.push(tree);
             tile.trees.push(new FakeTree());
 
-            var result = tile.onGrow(1.23 + ecology.WaterRequiredPerTree);
+            var result = tile.onGrow(1, 1.23 + ecology.WaterRequiredPerTree);
 
-            expect(tree.onTick.calls.first().args[0]).toEqual(ecology.WaterRequiredPerTree / 2);
+            expect(tree.onTick.calls.first().args[1]).toEqual(ecology.WaterRequiredPerTree / 2);
         });
 
         it("should provide 0 water if there is none left after watering the terrain", function () {
@@ -242,9 +242,9 @@ describe("tile", function () {
             tile.trees.push(tree);
             tile.trees.push(new FakeTree());
 
-            var result = tile.onGrow(1.23);
+            var result = tile.onGrow(1, 1.23);
 
-            expect(tree.onTick.calls.first().args[0]).toEqual(0);
+            expect(tree.onTick.calls.first().args[1]).toEqual(0);
         });
 
     });
