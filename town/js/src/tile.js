@@ -295,9 +295,9 @@ define(['knockout', 'ecologyConfiguration', 'terrain', 'compass', 'utility', 'tr
                     },
                     /* onTreeDied */
                     function () {
-                        var tree = self.trees()[treeIndex];
+                        //var tree = self.trees()[treeIndex];
                         //console.log(tree.name + " has died from drought");
-                        self.removeTree(tree);
+                        //self.removeTree(tree);
                     });
             }
         };
