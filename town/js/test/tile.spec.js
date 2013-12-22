@@ -87,20 +87,20 @@ describe("tile", function () {
 
     describe("canSupportGrass", function () {
 
-        it("should be able to support grass when there is enough soilMoisture available", function () {
+        it("should be able to support grass when there is enough averageRainfall available", function () {
             var tile = new Tile(0, 0, 0, 0, [{}]);
             tile.setTerrain({});
-            tile.weather.soilMoisture(ecology.MinimumWaterForGrass);
+            tile.weather.averageRainfall(ecology.MinimumWaterForGrass);
 
             var result = tile.canSupportGrass();
 
             expect(result).toBe(true);
         });
 
-        it("should not be able to support grass when there is too little soilMoisture available", function () {
+        it("should not be able to support grass when there is too little averageRainfall available", function () {
             var tile = new Tile(0, 0, 0, 0, [{}]);
             tile.setTerrain({});
-            tile.weather.soilMoisture(ecology.MinimumWaterForGrass / 2);
+            tile.weather.averageRainfall(ecology.MinimumWaterForGrass / 2);
 
             var result = tile.canSupportGrass();
 
@@ -111,20 +111,20 @@ describe("tile", function () {
 
     describe("canSupportDryGrass", function () {
 
-        it("should be able to support dry grass when there is enough soilMoisture available", function () {
+        it("should be able to support dry grass when there is enough averageRainfall available", function () {
             var tile = new Tile(0, 0, 0, 0, [{}]);
             tile.setTerrain({});
-            tile.weather.soilMoisture(ecology.MinimumWaterForDryGrass);
+            tile.weather.averageRainfall(ecology.MinimumWaterForDryGrass);
 
             var result = tile.canSupportDryGrass();
 
             expect(result).toBe(true);
         });
 
-        it("should not be able to support dry grass when there is too little soilMoisture available", function () {
+        it("should not be able to support dry grass when there is too little averageRainfall available", function () {
             var tile = new Tile(0, 0, 0, 0, [{}]);
             tile.setTerrain({});
-            tile.weather.soilMoisture(ecology.MinimumWaterForDryGrass / 2);
+            tile.weather.averageRainfall(ecology.MinimumWaterForDryGrass / 2);
 
             var result = tile.canSupportDryGrass();
 

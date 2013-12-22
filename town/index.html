@@ -60,37 +60,37 @@
             //var viewmodel = new TownViewModel(20,20);
 
             // -- large map with lake for testin
-            //viewmodel = new TownViewModel(40, 20);
-            //viewmodel.generateMap();
-            //viewmodel.tiles[7][8] = new Tile(0, 0, 0, 0, [terrain.WATER]);
-            //viewmodel.tiles[7][9] = new Tile(0, 0, 0, 0, [terrain.WATER]);
-            //viewmodel.tiles[8][7] = new Tile(0, 0, 0, 0, [terrain.WATER]);
-            //viewmodel.tiles[8][8] = new Tile(0, 0, 0, 0, [terrain.WATER]);
-            //viewmodel.tiles[8][9] = new Tile(0, 0, 0, 0, [terrain.WATER]);
-            //viewmodel.tiles[8][10] = new Tile(0, 0, 0, 0, [terrain.WATER]);
-            //viewmodel.tiles[9][8] = new Tile(0, 0, 0, 0, [terrain.WATER]);
-            //viewmodel.tiles[9][9] = new Tile(0, 0, 0, 0, [terrain.WATER]);
-            //viewmodel.globalWindDirection(compass.WEST);
+            viewmodel = new TownViewModel(40, 20);
+            viewmodel.generateMap();
+            viewmodel.tiles[7][8] = new Tile(0, 0, 0, 0, [terrain.WATER]);
+            viewmodel.tiles[7][9] = new Tile(0, 0, 0, 0, [terrain.WATER]);
+            viewmodel.tiles[8][7] = new Tile(0, 0, 0, 0, [terrain.WATER]);
+            viewmodel.tiles[8][8] = new Tile(0, 0, 0, 0, [terrain.WATER]);
+            viewmodel.tiles[8][9] = new Tile(0, 0, 0, 0, [terrain.WATER]);
+            viewmodel.tiles[8][10] = new Tile(0, 0, 0, 0, [terrain.WATER]);
+            viewmodel.tiles[9][8] = new Tile(0, 0, 0, 0, [terrain.WATER]);
+            viewmodel.tiles[9][9] = new Tile(0, 0, 0, 0, [terrain.WATER]);
+            viewmodel.globalWindDirection(compass.WEST);
             // -- end large map
 
             //-- Small map for testing
-            viewmodel = new TownViewModel(11, 1);
-            viewmodel.tiles = [
-                [
-                    new Tile(0, 0, 0, 0, [terrain.WATER]),
-                    new Tile(1, 0, 0, 0, [terrain.WATER]),
-                    new Tile(2, 0, 0, 0, [terrain.WATER]),
-                    new Tile(3, 0, 0, 0, [terrain.DIRT]),
-                    new Tile(4, 0, 0, 0, [terrain.DIRT]),
-                    new Tile(5, 0, 0, 0, [terrain.DIRT]),
-                    new Tile(6, 0, 0, 0, [terrain.DIRT]),
-                    new Tile(7, 0, 0, 0, [terrain.DIRT]),
-                    new Tile(8, 0, 0, 0, [terrain.DIRT]),
-                    new Tile(9, 0, 0, 0, [terrain.DIRT]),
-                    new Tile(10, 0, 0, 0, [terrain.DIRT])
-                ]
-            ];
-            viewmodel.globalWindDirection(compass.EAST);
+            //viewmodel = new TownViewModel(11, 1);
+            //viewmodel.tiles = [
+            //    [
+            //        new Tile(0, 0, 0, 0, [terrain.WATER]),
+            //        new Tile(1, 0, 0, 0, [terrain.WATER]),
+            //        new Tile(2, 0, 0, 0, [terrain.WATER]),
+            //        new Tile(3, 0, 0, 0, [terrain.DIRT]),
+            //        new Tile(4, 0, 0, 0, [terrain.DIRT]),
+            //        new Tile(5, 0, 0, 0, [terrain.DIRT]),
+            //        new Tile(6, 0, 0, 0, [terrain.DIRT]),
+            //        new Tile(7, 0, 0, 0, [terrain.DIRT]),
+            //        new Tile(8, 0, 0, 0, [terrain.DIRT]),
+            //        new Tile(9, 0, 0, 0, [terrain.DIRT]),
+            //        new Tile(10, 0, 0, 0, [terrain.DIRT])
+            //    ]
+            //];
+            //viewmodel.globalWindDirection(compass.EAST);
             // -- end small map
 
             //-- Smallest map for testing

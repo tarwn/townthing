@@ -72,6 +72,7 @@ define(['knockout', 'compass'],
 
             // clear current rain source, pull in new amounts
             self.rainSources[time] = self.getRainFromNeighbors(time - 1);
+            var rainfall = 0;
 
             // always start wih available soil moisture
             var availableWater = 0;
@@ -83,7 +84,8 @@ define(['knockout', 'compass'],
             // make it rain
             if (isRainDay) {
                 availableWater += self.rainSources[time] || 0;
-                self.rainSources[time] = 0
+                rainfall = self.rainSources[time];
+                self.rainSources[time] = 0;
             }
 
             log.availableWaterAfterRain = availableWater;
@@ -130,7 +132,7 @@ define(['knockout', 'compass'],
             log.finalValues.RainSource = self.rainSources[time]
 
             // update average rainfall value
-            self.updateAverageRainfall(isRainDay ? self.currentRainSource : 0);
+            self.updateAverageRainfall(rainfall);
             log.finalValues.AverageRainfall = self.averageRainfall();;
 
             //console.log(log);
@@ -198,9 +200,9 @@ define(['knockout', 'compass'],
         d0:      .00,
         d45:     .00,
         d90:     .05,
-        d135:    .05,
-        d180:    .80,
-        d225:    .05,
+        d135:    .10,
+        d180:    .70,
+        d225:    .10,
         d270:    .05,
         d315:    .00
     };

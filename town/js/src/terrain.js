@@ -2,7 +2,7 @@
 define([], function () {
 
     var terrain = {
-        WATER: { index: 0, symbol: '~', variants: 1, class: 'terrain-water', isWater: true, evaporation: 10 /* 4 = est from NOAA pan readings in colorado */ },
+        WATER: { index: 0, symbol: '~', variants: 1, class: 'terrain-water', isWater: true, evaporation: 5 /* 4 = est from NOAA pan readings in colorado */ },
         //SAND: { index: 1, symbol: '-', variants: 1, class: 'terrain-sand' },
         DIRT: { index: 2, symbol: '=', variants: 3, class: 'terrain-dirt', canTransitionToGrass: true },
         DRYGRASS: { index: 4, symbol: '/', variants: 4, class: 'terrain-drygrass', waterRequired: .75, canTransitionToGrass: true, evaporation: 1.0 },

@@ -211,12 +211,12 @@ define(['knockout', 'ecologyConfiguration', 'terrain', 'compass', 'utility', 'tr
             self.terrainAge++;
 
             // weather
-            var isRainDay = self.terrainAge % 3 == 0;
+            var isRainDay = time % 3 == 0;
             var waterForPlants = (self.terrain().waterRequired || 0) + ecology.WaterRequiredPerTree * self.trees().length;
             var overflow = self.weather.onTick(time, isRainDay, waterForPlants, self.getEvaporationAmount());
 
-            if(self.x == 5)
-                console.log("Weather Update: (" + (isRainDay ? "Raining" : "Clear") + ") " + self.toString());
+            //if(self.x == 3)
+            //    console.log("Weather Update: (" + (isRainDay ? "Raining" : "Clear") + ") " + self.toString());
 
             // terrain transitions
             if (self.terrainAge > 10) {
@@ -303,7 +303,7 @@ define(['knockout', 'ecologyConfiguration', 'terrain', 'compass', 'utility', 'tr
 
         // toString
         this.toString = ko.computed(function () {
-            return "[tile " + self.x + "," + self.y + " " + self.terrain().class + " AvgRain=" + this.weather.averageRainfall() + ", SoilM=" + this.weather.soilMoisture() + ", WindDir=" + this.weather.windDirection().name + ", BaseEvap=" + self.getEvaporationAmount() + ", RainSource=" + self.weather.currentRainSource + ", plantConsumption=" + self.weather.waterForPlantConsumption + "]";
+            return "[tile " + self.x + "," + self.y + " " + self.terrain().class + " AvgRain=" + this.weather.averageRainfall() + ", SoilM=" + this.weather.soilMoisture() + ", WindDir=" + this.weather.windDirection().name + ", BaseEvap=" + self.getEvaporationAmount() + ", RainSource=" + self.weather.currentRainSource + ", plantConsumption=" + self.weather.waterForPlantConsumption + ", rain=" + (self.weather.amountOfRain || 0) + "]";
         }, this);
 
     };
