@@ -1,0 +1,1 @@
+This is just a sample project I was playing with for practice. I'm now taking advantage of it to play with (or provide blog examples of) other tools as well.

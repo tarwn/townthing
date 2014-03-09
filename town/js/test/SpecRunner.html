@@ -9,9 +9,9 @@
 
 	<script type="text/javascript" src="../lib/jasmine-2.0.0/jasmine.js"></script>
 	<script type="text/javascript" src="../lib/jasmine-2.0.0/jasmine-html.js"></script>
-	<script type="text/javascript" src="../lib/jasmine-2.0.0/boot.js"></script>
+	<script type="text/javascript" src="../lib/jasmine-2.0.0/boot-without-onload.js"></script>
 
-	<script src="../lib/require-2.1.9.js"></script>
+	<script src="../lib/require-2.1.11.js"></script>
 
 	<script type="text/javascript">
 	require.config({
@@ -21,12 +21,11 @@
 			"Squire": "../lib/Squire"
 		}
 	});
-	</script>
 
-    <script type="text/javascript" src="compass.spec.js"></script>
-    <script type="text/javascript" src="tile.spec.js"></script>
-    <script type="text/javascript" src="tree.spec.js"></script>
-    <script type="text/javascript" src="weather.spec.js"></script>
+	require(['../test/compass.spec', '../test/tile.spec', '../test/tree.spec', '../test/weather.spec'],function(){
+		window.executeTests();
+	});
+	</script>
 </head>
 <body>
 </body>

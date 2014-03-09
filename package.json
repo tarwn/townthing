@@ -1,0 +1,11 @@
+{
+	"name": "townthing",
+	"version": "0.1.0",
+	"description": "sample project I'm playing with",
+	"repository": "https://github.com/tarwn/townthing",
+
+	"devDependencies": {
+		"karma": "~0.10",
+		"karma-jasmine": "~0.2"
+	}
+}

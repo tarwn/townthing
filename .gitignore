@@ -58,3 +58,6 @@ packages/
 
 # visual studio database projects
 *.dbmdl
+
+#npm
+node_modules/
