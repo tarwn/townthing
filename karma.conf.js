@@ -6,7 +6,7 @@ module.exports = function(config) {
 		  'test/test-main.js',
 		  {pattern: '**/*.js', included: false}
 		],
-		exclude: [ ],
+		exclude: [ '**/main.js' ],
 		reporters: ['dots'],
 		port: 9876,
 		colors: true,

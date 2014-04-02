@@ -5,7 +5,9 @@
 	"repository": "https://github.com/tarwn/townthing",
 
 	"devDependencies": {
-		"karma": "~0.10",
-		"karma-jasmine": "~0.2"
+		"karma": "~0.11",
+		"karma-jasmine": "~0.2",
+		"karma-phantomjs-launcher": "~0.1",
+		"karma-chrome-launcher": "~0.1"
 	}
 }
