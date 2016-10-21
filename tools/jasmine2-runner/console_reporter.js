@@ -96,8 +96,8 @@
             suite = getSuite(suite);
             suite._parent = currentSuite;
             suite.startedTime = performance.now();
-            // suite.totalSpecCount = 0;
-            // suite.successSpecCount = 0;
+            suite.totalSpecCount = 0;
+            suite.successSpecCount = 0;
             currentSuite = suite;
         };
         self.specStarted = function(spec) {
@@ -131,16 +131,17 @@
         self.suiteDone = function(suite) {
             suite = getSuite(suite);
             if(suite._parent == null){
-                // log('suiteDone [' + humanReadableElapsed(performance.now() - suite.startedTime) + ',' + suite.successSpecCount + '/' + suite.totalSpecCount + '] : ' + suite.description);
-                log('suiteDone [' + humanReadableElapsed(performance.now() - suite.startedTime) + '] : ' + suite.description);
+                log('suiteDone [' + humanReadableElapsed(performance.now() - suite.startedTime) + ',' + suite.successSpecCount + '/' + suite.totalSpecCount + '] : ' + suite.description);
+                // log('suiteDone [' + humanReadableElapsed(performance.now() - suite.startedTime) + '] : ' + suite.description);
             }
+            else if(suite._parent != null){
+                suite._parent.totalSpecCount += suite.totalSpecCount;
+                suite._parent.successSpecCount += suite.successSpecCount;
+            }
+
             if (suite._parent === UNDEFINED) {
                 // disabled suite (xdescribe) -- suiteStarted was never called
                 self.suiteStarted(suite);
-            }
-            else{
-                // suite._parent.totalSpecCount += suite.totalSpecCount;
-                // suite._parent.successSpecCount += suite.successSpecCount;
             }
             currentSuite = suite._parent;
         };
