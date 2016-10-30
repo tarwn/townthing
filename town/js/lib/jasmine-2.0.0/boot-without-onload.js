@@ -130,22 +130,18 @@
     timer: new jasmine.Timer()
   });
 
-  var junitReporter = new jasmineRequire.JUnitXmlReporter({
-	  
-	  
-  });
   /**
    * The `jsApiReporter` also receives spec results, and is used by any environment that needs to extract the results  from JavaScript.
    */
   env.addReporter(jasmineInterface.jsApiReporter);
-//  env.addReporter(htmlReporter);
-  env.addReporter(junitReporter);
+  env.addReporter(htmlReporter);
+
   /**
    * Filter which specs will be run by matching the start of the full name against the `spec` query param.
    */
-//  var specFilter = new jasmine.HtmlSpecFilter({
- //   filterString: function() { return queryString.getParam("spec"); }
-  //});
+  var specFilter = new jasmine.HtmlSpecFilter({
+    filterString: function() { return queryString.getParam("spec"); }
+  });
 
   env.specFilter = function(spec) {
     return specFilter.matches(spec.getFullName());
@@ -166,8 +162,7 @@
    */
  
   window.executeTests = function(){
-  //  htmlReporter.initialize();
-  console.log('execute');
+    htmlReporter.initialize();
     env.execute();
   };
 

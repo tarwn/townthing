@@ -57,7 +57,13 @@
             }
         }
         
-        var failedSpecs = [];
+        self.stats = {
+            failedSpecs: [],
+            suites: [],
+            constructionTime: performance.now(),
+            totalSpecCount: 0,
+            successSpecCount: 0
+        };
 
         if(options.modifySuiteName && typeof options.modifySuiteName !== 'function') {
             throw new Error('option "modifySuiteName" must be a function');
@@ -89,15 +95,22 @@
             totalSpecsDefined = summary && summary.totalSpecsDefined || NaN;
             exportObject.startTime = new Date();
             self.started = true;
-            self.startedTime = performance.now();
-            log('jasmine started');
+            self.stats.startedTime = performance.now();
+            log('display: jasmine started');
         };
         self.suiteStarted = function(suite) {
             suite = getSuite(suite);
             suite._parent = currentSuite;
-            suite.startedTime = performance.now();
-            suite.totalSpecCount = 0;
-            suite.successSpecCount = 0;
+            if(suite.stats === undefined){
+                suite.stats = {
+                    description: suite.description,
+                    startedTime: performance.now(),
+                    totalSpecCount: 0,
+                    successSpecCount: 0,
+                    specs: [],
+                    suites: []
+                }
+            }
             currentSuite = suite;
         };
         self.specStarted = function(spec) {
@@ -106,43 +119,56 @@
                 self.suiteStarted(fakeFocusedSuite);
             }
             spec = getSpec(spec);
+            spec.stats = {
+                description: spec.description,
+                startedTime: performance.now()                
+            };
         };
         self.specDone = function(spec) {
-            self.totalSpecCount++;
-            currentSuite.totalSpecCount++;
             spec = getSpec(spec);
-            if (isSkipped(spec) || isDisabled(spec)) {
+            
+            self.stats.totalSpecCount++;
+            currentSuite.stats.totalSpecCount++;
+            currentSuite.stats.specs.push(spec.stats);
+            spec.stats.executionTime = performance.now() - spec.stats.startedTime;
 
+            if (isSkipped(spec)){
+                spec.stats.status = "skipped";
+            }
+            else if(isDisabled(spec)){
+                spec.stats.status = "disabled";
             }
             else if (isFailed(spec) && spec.failedExpectations.length) {
                 var failure = spec.failedExpectations[0];
-
-                failedSpecs.push({
-                    name: spec.description,
-                    message: failure.message,
-                    details: failure.stack
-                });
+                spec.stats.status = "failed";
+                spec.stats.statusMessage = failure.message;
+                spec.stats.statusStack = failure.stack;
             }
             else{
-                self.successSpecCount++;
-                currentSuite.successSpecCount++;
+                self.stats.successSpecCount++;
+                currentSuite.stats.successSpecCount++;
+                spec.stats.status = "passed";
             }
         };
         self.suiteDone = function(suite) {
             suite = getSuite(suite);
-            if(suite._parent == null){
-                log('suiteDone [' + humanReadableElapsed(performance.now() - suite.startedTime) + ',' + suite.successSpecCount + '/' + suite.totalSpecCount + '] : ' + suite.description);
-                // log('suiteDone [' + humanReadableElapsed(performance.now() - suite.startedTime) + '] : ' + suite.description);
-            }
-            else if(suite._parent != null){
-                suite._parent.totalSpecCount += suite.totalSpecCount;
-                suite._parent.successSpecCount += suite.successSpecCount;
-            }
 
             if (suite._parent === UNDEFINED) {
                 // disabled suite (xdescribe) -- suiteStarted was never called
                 self.suiteStarted(suite);
             }
+
+            suite.stats.executionTime = performance.now() - suite.stats.startedTime
+            if(suite._parent == null){
+                log('display: suiteDone [' + humanReadableElapsed(performance.now() - suite.stats.startedTime) + ',' + suite.stats.successSpecCount + '/' + suite.stats.totalSpecCount + '] : ' + suite.stats.description);
+                self.stats.suites.push(suite.stats);
+            }
+            else{
+                suite._parent.stats.totalSpecCount += suite.stats.totalSpecCount;
+                suite._parent.stats.successSpecCount += suite.stats.successSpecCount;
+                suite._parent.stats.suites.push(suite.stats);
+            }
+
             currentSuite = suite._parent;
         };
         self.jasmineDone = function() {
@@ -150,19 +176,13 @@
                 // focused spec (fit) -- suiteDone was never called
                 self.suiteDone(fakeFocusedSuite);
             }
-            var totalTimeElapsed = performance.now() - self.startedTime;
-            log(self.successSpecCount + '/' + self.totalSpecCount + ' specs in ' + humanReadableElapsed(totalTimeElapsed));
-
-            if(failedSpecs.length > 0){
-                log('Spec Failures: \n\n');
-                failedSpecs.forEach(function(spec){
-                    log('Spec: ' + spec.name + 'Message: ' + spec.message + '\nStack: ' + spec.details + '\n\n');
-                });
-            }
-
+            var totalTimeElapsed = performance.now() - self.stats.startedTime;
+            log("display: " + self.stats.successSpecCount + '/' + self.stats.totalSpecCount + ' specs in ' + humanReadableElapsed(totalTimeElapsed));            
+            log("stats: " + JSON.stringify(self.stats));
             self.finished = true;
             // this is so phantomjs-testrunner.js can tell if we're done executing
             exportObject.endTime = new Date();
+            log("jasmineDone");
         };
 
     };
